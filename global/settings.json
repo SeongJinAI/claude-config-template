@@ -15,5 +15,50 @@
     ],
     "defaultMode": "plan"
   },
-  "language": "Korean"
+  "language": "Korean",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/on-commit-quality-check.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/on-push-signature-check.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/on-prompt-handoff-remind.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/on-prompt-api-dev-guide.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/on-prompt-test-feedback.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/on-compact-handoff-save.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

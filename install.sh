@@ -18,6 +18,7 @@ HOOK_FILES=(
     "on-compact-handoff-save.sh"
     "on-prompt-handoff-remind.sh"
     "on-prompt-api-dev-guide.sh"
+    "on-prompt-test-feedback.sh"
 )
 
 # ─── 심볼릭 링크 모드 (로컬 개발용) ───
