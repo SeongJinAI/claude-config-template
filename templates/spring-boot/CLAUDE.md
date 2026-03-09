@@ -9,23 +9,12 @@
 ## 빌드 및 실행 명령어
 
 ```bash
-# 빌드
-./gradlew build
-
-# 로컬 실행
-./gradlew bootRun
-
-# 테스트 실행
-./gradlew test
-
-# 단일 테스트 실행
-./gradlew test --tests "com.example.SomeTestClass"
-
-# QueryDSL Q클래스 생성
-./gradlew compileJava
-
-# 클린 빌드
-./gradlew clean build
+./gradlew build                    # 빌드
+./gradlew bootRun                  # 로컬 실행
+./gradlew test                     # 테스트 실행
+./gradlew test --tests "com.example.SomeTestClass"  # 단일 테스트
+./gradlew compileJava              # QueryDSL Q클래스 생성
+./gradlew clean build              # 클린 빌드
 ```
 
 ## 아키텍처
@@ -59,230 +48,25 @@ com.[회사명].[프로젝트명]
     └── util/         # 유틸리티
 ```
 
-## 데이터 접근 패턴
+### 데이터 접근 우선순위
 
-### JPA Repository
-
-JPQL 대신 메서드 네이밍 컨벤션 사용 권장:
-
-```java
-// 권장
-List<User> findByStatusAndCreatedAtAfter(Status status, LocalDateTime date);
-
-// 지양
-@Query("SELECT u FROM User u WHERE u.status = :status")
-List<User> findByStatus(@Param("status") Status status);
-```
-
-### QueryDSL
-
-복잡한 동적 쿼리에 사용:
-
-```java
-// null 반환 시 조건 무시
-private BooleanExpression statusEquals(Status status) {
-    return status != null ? user.status.eq(status) : null;
-}
-
-// 빈 리스트 주의
-private BooleanExpression codeIn(List<String> codes) {
-    if (codes == null) return null;
-    if (codes.isEmpty()) return Expressions.FALSE;
-    return entity.code.in(codes);
-}
-```
-
-### JPA Specifications
-
-```java
-public static Specification<User> statusEquals(Status status) {
-    if (status == null) return null;
-    return (root, query, cb) -> cb.equal(root.get("status"), status);
-}
-```
+JPA 메서드 네이밍 → JPA Specifications (필터) → QueryDSL (동적 쿼리) → MyBatis (복잡 SQL)
 
 ## API 응답 패턴
 
 ```java
-ApiResponse.success(data)           // {success: true, message: "ok", data: ...}
-ApiResponse.error(message)          // {success: false, message: "...", data: null}
-```
-
-## 페이지네이션 패턴
-
-```java
-// Controller: 프론트엔드 1-indexed → Service 0-indexed 변환
-@GetMapping
-public ResponseEntity<ApiResponse<PaginatedResponseDto<ItemDto>>> list(
-    @RequestParam(defaultValue = "1") int page,
-    @RequestParam(defaultValue = "20") int size
-) {
-    return ResponseEntity.ok(ApiResponse.success(service.getList(page - 1, size)));
-}
+ApiResponse.success(data)           // 데이터 조회
+ApiResponse.ok("생성 되었습니다.")    // CUD 성공
+ApiResponse.error(errorCode)        // 에러
 ```
 
 ## 인증
 
-```java
-@GetMapping("/example")
-public ResponseEntity<ApiResponse<Void>> example(
-    @AuthenticationPrincipal LoginUser loginUser
-) {
-    String userId = loginUser.userId();
-}
-```
-
-## 에러 처리
-
-```java
-// 엔티티 없음 - 400
-throw new IllegalArgumentException("ERR_NOT_FOUND_USER");
-
-// 권한 없음 - 403
-throw new IllegalStateException("ERR_UNAUTHORIZED");
-
-// 비즈니스 에러
-throw new BusinessException("ERR_INVALID_REQUEST");
-```
-
-에러 메시지: `ERR_` 접두사 + SCREAMING_SNAKE_CASE
-
-## 네이밍 컨벤션
-
-| 대상 | 패턴 | 예시 |
-|------|------|------|
-| 컨트롤러 | `*Controller` | `UserController` |
-| 서비스 | `*Service` | `UserService` |
-| DTO (요청) | `*Request` | `UserCreateRequest` |
-| DTO (응답) | `*Response` | `UserListResponse` |
-
-### 컨트롤러 메서드
-
-| 작업 | 패턴 |
-|------|------|
-| 목록 | `{entity}List` |
-| 상세 | `{entity}Detail` |
-| 등록 | `{entity}Create` |
-| 수정 | `{entity}Update` |
-| 삭제 | `{entity}Delete` |
-
-## 컨트롤러 컨벤션
-
-```java
-@Tag(name = "대분류 - 소분류")
-@RestController
-@RequestMapping("/domain/entity")
-@RequiredArgsConstructor
-public class EntityController {
-
-    @Operation(summary = "목록 조회")
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<Response>>> list(
-            @AuthenticationPrincipal LoginUser loginUser,
-            @Valid @ModelAttribute ListRequest request
-    )
-    {
-        List<Response> response = service.getList(request);
-
-        return ResponseEntity.ok(ApiResponse.success(response));
-    }
-}
-```
-
-## 엔티티 패턴
-
-```java
-@Entity
-@Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class User {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Builder
-    private User(String name, String email) {
-        this.name = name;
-        this.email = email;
-    }
-
-    public static User from(UserCreateRequest request) {
-        return User.builder()
-            .name(request.name())
-            .email(request.email())
-            .build();
-    }
-
-    public void update(UserUpdateRequest request) {
-        if (request.name() != null) this.name = request.name();
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
-}
-```
-
-## DTO 패턴
-
-```java
-// Request (record)
-public record UserCreateRequest(
-    @NotBlank(message = "ERR_REQUIRE_NAME")
-    @Schema(description = "이름", example = "홍길동")
-    String name
-) {}
-
-// Response
-public record UserResponse(Long id, String name) {
-    public static UserResponse from(User user) {
-        return new UserResponse(user.getId(), user.getName());
-    }
-}
-```
-
-## Enum 패턴
-
-```java
-// 기본
-@Enumerated(EnumType.STRING)
-private Status status;
-
-// DB 소문자 저장 시 Converter 사용
-@Convert(converter = StatusConverter.class)
-private Status status;
-```
-
-## 테스트 패턴
-
-```java
-@DisplayName("User API 테스트")
-class UserControllerTest extends ApiTestSupport {
-
-    @Nested
-    @DisplayName("목록 조회")
-    class ListTests {
-        @Test
-        @WithMockLoginUser
-        @DisplayName("성공")
-        void success() throws Exception {
-            performGet("/users")
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-        }
-    }
-}
-```
+`@AuthenticationPrincipal LoginUser loginUser` — `loginUser.userId()`, `loginUser.agencyCode()`
 
 ## API 문서
 
-- Swagger UI: `/swagger-ui/index.html`
-
-## 기능 개발 체크리스트
-
-- [ ] 기능명세서 작성
-- [ ] ERROR_MESSAGES.md 업데이트
-- [ ] 빌드 확인 (`./gradlew build`)
+Swagger UI: `/swagger-ui/index.html`
 
 ## 스토리보드 기반 API 개발 워크플로
 
@@ -296,25 +80,16 @@ class UserControllerTest extends ApiTestSupport {
 | 위치 | `[기획문서 디렉토리 경로]` |
 | 파일명 규칙 | `[파일명 패턴]` |
 
-### 개발 파이프라인 (요약)
-
-1. 스토리보드 PDF 분석 → UI 요소를 API 엔드포인트로 매핑
-2. 기능명세서 작성
-3. 아키텍처 설명서 작성
-4. 코드 구현: Entity → Repository → DTO → Service → Controller → Test
-5. 사용자매뉴얼 작성
-6. 부수 문서 (ERROR_MESSAGES 등) 업데이트
-
 ### 핵심 원칙
 
 - **스토리보드 ≠ 최종 사양** → DB/비즈니스 로직은 기존 코드 분석 병행
 - **유사 기능 참고 우선** → 기존 구현 패턴 분석 후 개발
 - **문서 → 코드 → 매뉴얼** 순서 준수
 
----
+## 기능 개발 체크리스트
 
-## 인수인계 (HANDOFF.md)
-
-`/clear` 명령어 시 반드시 HANDOFF.md 업데이트
-
-**IMPORTANT**: 인수인계 문서 업데이트는 **필수**입니다.
+- [ ] 기능명세서 작성
+- [ ] 아키텍처 설명서 작성
+- [ ] 사용자매뉴얼 작성
+- [ ] ERROR_MESSAGES.md 업데이트
+- [ ] 빌드 확인 (`./gradlew build`)

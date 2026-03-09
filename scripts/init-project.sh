@@ -21,6 +21,13 @@ case $TEMPLATE in
         ;;
 esac
 
+# 템플릿별 rules 파일 정의
+case $TEMPLATE in
+    spring-boot) RULE_FILES=("코드스타일_가이드.md" "예외처리_가이드.md") ;;
+    fastapi)     RULE_FILES=("코드스타일_가이드.md" "예외처리_가이드.md") ;;
+    nextjs)      RULE_FILES=("코드스타일_가이드.md") ;;
+esac
+
 # CLAUDE.md 다운로드
 echo "📥 CLAUDE.md 다운로드 중..."
 if [ -f "CLAUDE.md" ]; then
@@ -28,6 +35,17 @@ if [ -f "CLAUDE.md" ]; then
     cp CLAUDE.md CLAUDE.md.backup
 fi
 curl -fsSL "$REPO_URL/templates/$TEMPLATE/CLAUDE.md" -o CLAUDE.md
+
+# Template Rules 다운로드
+echo "📥 Template Rules 다운로드 중..."
+mkdir -p .claude/rules
+for f in "${RULE_FILES[@]}"; do
+    if [ ! -f ".claude/rules/$f" ]; then
+        curl -fsSL "$REPO_URL/templates/$TEMPLATE/rules/$f" -o ".claude/rules/$f" 2>/dev/null || echo "  ⚠️ $f 다운로드 실패 (스킵)"
+    else
+        echo "  ⏭️  .claude/rules/$f 이미 존재 (스킵)"
+    fi
+done
 
 # HANDOFF.md 생성 (없는 경우)
 if [ ! -f "HANDOFF.md" ]; then
@@ -67,9 +85,13 @@ echo ""
 echo "📁 생성된 파일:"
 echo "   - CLAUDE.md"
 echo "   - HANDOFF.md"
-echo "   - .claude/"
+echo "   - .claude/rules/"
+for f in "${RULE_FILES[@]}"; do
+    echo "     - $f"
+done
 echo ""
 echo "💡 다음 단계:"
 echo "   1. CLAUDE.md에서 [프로젝트명] 등 플레이스홀더 수정"
 echo "   2. 프로젝트 특화 도메인 정보 추가"
+echo "   3. .claude/rules/ 파일을 프로젝트에 맞게 커스터마이징"
 echo ""

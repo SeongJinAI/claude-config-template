@@ -21,6 +21,13 @@ HOOK_FILES=(
     "on-prompt-test-feedback.sh"
 )
 
+# Global Rules 파일 목록
+RULE_FILES=(
+    "예외처리_원칙.md"
+    "코드리뷰_원칙.md"
+    "개발워크플로_원칙.md"
+)
+
 # ─── 심볼릭 링크 모드 (로컬 개발용) ───
 if [ "$1" = "--link" ]; then
     DOTFILES_DIR="${2:-.}"
@@ -39,10 +46,35 @@ if [ "$1" = "--link" ]; then
 
     ln -s "$DOTFILES_DIR/hooks" "$CLAUDE_DIR/hooks"
     echo "✅ ~/.claude/hooks → $DOTFILES_DIR/hooks"
+
+    # rules 디렉토리 심볼릭 링크
+    if [ -d "$DOTFILES_DIR/global/rules" ]; then
+        if [ -L "$CLAUDE_DIR/rules" ]; then
+            echo "⚠️  기존 rules 심볼릭 링크 제거..."
+            rm "$CLAUDE_DIR/rules"
+        elif [ -d "$CLAUDE_DIR/rules" ]; then
+            echo "⚠️  기존 rules 디렉토리 백업 → rules.backup/"
+            mv "$CLAUDE_DIR/rules" "$CLAUDE_DIR/rules.backup"
+        fi
+
+        ln -s "$DOTFILES_DIR/global/rules" "$CLAUDE_DIR/rules"
+        echo "✅ ~/.claude/rules → $DOTFILES_DIR/global/rules"
+    fi
+
     echo ""
     echo "📁 연결된 Hook 스크립트:"
     for f in "${HOOK_FILES[@]}"; do
         if [ -f "$CLAUDE_DIR/hooks/$f" ]; then
+            echo "   ✓ $f"
+        else
+            echo "   ✗ $f (없음)"
+        fi
+    done
+
+    echo ""
+    echo "📁 연결된 Global Rules:"
+    for f in "${RULE_FILES[@]}"; do
+        if [ -f "$CLAUDE_DIR/rules/$f" ]; then
             echo "   ✓ $f"
         else
             echo "   ✗ $f (없음)"
@@ -83,6 +115,13 @@ for f in "${HOOK_FILES[@]}"; do
 done
 chmod +x "$CLAUDE_DIR/hooks/"*.sh
 
+# Global Rules 다운로드
+echo "📥 Global Rules 다운로드 중..."
+mkdir -p "$CLAUDE_DIR/rules"
+for f in "${RULE_FILES[@]}"; do
+    curl -fsSL "$REPO_URL/global/rules/$f" -o "$CLAUDE_DIR/rules/$f" 2>/dev/null || echo "  ⚠️ $f 다운로드 실패 (스킵)"
+done
+
 echo ""
 echo "✅ 설치 완료!"
 echo ""
@@ -90,6 +129,7 @@ echo "📁 설치된 파일:"
 echo "   - $CLAUDE_DIR/settings.json"
 echo "   - $CLAUDE_DIR/commands/"
 echo "   - $CLAUDE_DIR/hooks/"
+echo "   - $CLAUDE_DIR/rules/"
 echo ""
 echo "💡 프로젝트 템플릿 적용:"
 echo "   curl -fsSL $REPO_URL/scripts/init-project.sh | bash -s spring-boot"

@@ -26,6 +26,43 @@ curl -fsSL https://raw.githubusercontent.com/[YOUR_ID]/claude-dotfiles/main/scri
 
 ---
 
+## Rules 3-Tier Architecture
+
+Claude Code는 `~/.claude/rules/`(글로벌)와 `.claude/rules/`(프로젝트)를 자동 로딩합니다.
+**원칙(글로벌) → 구현(프레임워크 템플릿) → 커스텀(프로젝트)** 3계층 구조로 규칙을 관리합니다.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Global Rules (~/.claude/rules/)      [거버넌스 레포]    │
+│  ├── 예외처리_원칙.md    4계층 분류, ERR_, 로깅 레벨     │
+│  ├── 코드리뷰_원칙.md    시나리오 검증, DDD 계층 책임    │
+│  └── 개발워크플로_원칙.md 개발순서, 산출물, HANDOFF      │
+├─────────────────────────────────────────────────────────┤
+│  Template Rules (.claude/rules/)  [init-project.sh]     │
+│  ├── 코드스타일_가이드.md  프레임워크별 컨벤션           │
+│  └── 예외처리_가이드.md    프레임워크별 예외 구현         │
+├─────────────────────────────────────────────────────────┤
+│  Project Rules (.claude/rules/)   [개발자 커스텀]       │
+│  └── 추가/수정 자유 (template 오버라이딩)               │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 파일명 전략
+
+- `_원칙.md` → 글로벌 (프레임워크 무관 원칙)
+- `_가이드.md` → 프레임워크별 (구현 패턴, 컨벤션)
+
+이름이 다르므로 충돌 없이 **보완 관계**를 유지합니다.
+
+### 우선순위 (낮음 → 높음)
+
+```
+~/.claude/rules/*.md     → 글로벌 (모든 프로젝트 공통)
+.claude/rules/*.md       → 프로젝트 (프레임워크별 + 커스텀, 글로벌 오버라이드 가능)
+```
+
+---
+
 ## Settings 3단계 계층 구조
 
 Claude Code는 Global > Project > Local 순으로 설정 범위가 나뉘며, **상위에서 열어준 범위 내에서만 하위가 설정 가능**합니다.
@@ -181,16 +218,28 @@ claude-dotfiles/
 ├── global/                           # Global 레벨 설정
 │   ├── CLAUDE.md                     # 전역 지침
 │   ├── settings.json                 # permissions + language
+│   ├── rules/                        # Global Rules → ~/.claude/rules/
+│   │   ├── 예외처리_원칙.md           # 4계층 분류, ERR_, 로깅
+│   │   ├── 코드리뷰_원칙.md           # 시나리오 검증, DDD
+│   │   └── 개발워크플로_원칙.md        # 개발순서, 산출물, HANDOFF
 │   └── commands/
 │       └── clear.md                  # /clear 커스텀 명령어
 │
-├── templates/                        # 프로젝트 CLAUDE.md 템플릿
+├── templates/                        # 프로젝트 CLAUDE.md + Rules 템플릿
 │   ├── spring-boot/
-│   │   └── CLAUDE.md
+│   │   ├── CLAUDE.md
+│   │   └── rules/
+│   │       ├── 코드스타일_가이드.md    # Entity/DTO/Controller/Service 컨벤션
+│   │       └── 예외처리_가이드.md      # BusinessException, ErrorCode
 │   ├── fastapi/
-│   │   └── CLAUDE.md
+│   │   ├── CLAUDE.md
+│   │   └── rules/
+│   │       ├── 코드스타일_가이드.md    # Router/Schema/Service 컨벤션
+│   │       └── 예외처리_가이드.md      # BusinessError, exception_handler
 │   └── nextjs/
-│       └── CLAUDE.md
+│       ├── CLAUDE.md
+│       └── rules/
+│           └── 코드스타일_가이드.md    # App Router/Component/Zustand 컨벤션
 │
 ├── hooks/                            # Claude Code 훅 스크립트
 │   ├── on-commit-quality-check.sh    # git commit 전 코드 품질 검사
@@ -208,7 +257,7 @@ claude-dotfiles/
 │       └── STORYBOARD_WORKFLOW.md    # 스토리보드 기반 개발 워크플로
 │
 └── scripts/
-    ├── init-project.sh               # 프로젝트 초기화
+    ├── init-project.sh               # 프로젝트 초기화 (CLAUDE.md + Rules 복사)
     └── sync.sh                       # 설정 동기화
 ```
 
@@ -251,7 +300,8 @@ cp hooks/*.sh ~/.claude/hooks/ && chmod +x ~/.claude/hooks/*.sh
 ### 새 프로젝트 템플릿
 
 1. `templates/[프레임워크명]/CLAUDE.md` 작성
-2. spring-boot 템플릿 참고
+2. `templates/[프레임워크명]/rules/` 에 컨벤션 파일 추가
+3. `scripts/init-project.sh` 에 템플릿 등록
 
 ### 새 Hook 추가
 
