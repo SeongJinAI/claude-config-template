@@ -7,13 +7,12 @@
 # 트리거: 사용자 프롬프트 제출 시
 # 출력: stdout → Claude 컨텍스트에 주입됨
 
-# 디버그 로그 (hooks 실행 확인용)
-LOG_FILE="/tmp/claude-hooks.log"
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] UserPromptSubmit hook 실행됨" >> "$LOG_FILE"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/lib/log-utils.sh"
+HOOK_START_MS=$(get_ms)
 
 # stdin에서 JSON 읽기
 INPUT=$(cat)
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] INPUT: $INPUT" >> "$LOG_FILE"
 
 # prompt 추출
 get_prompt() {
@@ -95,6 +94,11 @@ if echo "$PROMPT" | grep -qE "^/(clear|compact)"; then
         echo ""
     fi
 fi
+
+# JSONL 로그 기록
+CWD_FOR_LOG=$(get_json_field "$INPUT" "cwd")
+REPO=$(get_repo_name "$CWD_FOR_LOG")
+log_hook_execution "on-prompt-handoff-remind.sh" "UserPromptSubmit" 0 "$HOOK_START_MS" "$REPO"
 
 # 항상 통과
 exit 0

@@ -8,6 +8,10 @@
 # 2. 사용하지 않는 코드 검사 (경고)
 # 3. 코드 컨벤션 검사 (경고)
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/lib/log-utils.sh"
+HOOK_START_MS=$(get_ms)
+
 # stdin에서 JSON 읽기
 INPUT=$(cat)
 
@@ -198,6 +202,10 @@ if [ "$HAS_WARNINGS" = true ]; then
 fi
 
 echo "✅ Pre-commit 검사 완료!" >&2
+
+# JSONL 로그 기록
+REPO=$(get_repo_name "$CWD")
+log_hook_execution "on-commit-quality-check.sh" "PreToolUse" 0 "$HOOK_START_MS" "$REPO"
 
 # 경고만 표시하고 통과 (차단하려면 exit 2)
 exit 0

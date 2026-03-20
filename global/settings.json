@@ -15,7 +15,6 @@
     ],
     "defaultMode": "plan"
   },
-  "language": "Korean",
   "hooks": {
     "PreToolUse": [
       {
@@ -27,6 +26,10 @@
           },
           {
             "type": "command",
+            "command": "~/.claude/hooks/on-commit-doc-sync-check.sh"
+          },
+          {
+            "type": "command",
             "command": "~/.claude/hooks/on-push-signature-check.sh"
           }
         ]
@@ -35,6 +38,10 @@
     "UserPromptSubmit": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/on-prompt-log.sh"
+          },
           {
             "type": "command",
             "command": "~/.claude/hooks/on-prompt-handoff-remind.sh"
@@ -60,5 +67,6 @@
         ]
       }
     ]
-  }
+  },
+  "language": "Korean"
 }

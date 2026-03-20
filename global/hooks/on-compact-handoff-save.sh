@@ -7,13 +7,12 @@
 # 트리거: 수동(/compact) 또는 자동 compact 발생 전
 # JSON 입력: session_id, transcript_path, trigger(manual|auto), custom_instructions
 
-# 디버그 로그 (hooks 실행 확인용)
-LOG_FILE="/tmp/claude-hooks.log"
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] PreCompact hook 실행됨" >> "$LOG_FILE"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/lib/log-utils.sh"
+HOOK_START_MS=$(get_ms)
 
 # stdin에서 JSON 읽기
 INPUT=$(cat)
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] INPUT: $INPUT" >> "$LOG_FILE"
 
 # trigger 추출 (manual 또는 auto)
 get_trigger() {
@@ -94,6 +93,10 @@ check_handoff
 echo "" >&2
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >&2
 echo "" >&2
+
+# JSONL 로그 기록
+REPO=$(get_repo_name "$CWD")
+log_hook_execution "on-compact-handoff-save.sh" "PreCompact" 0 "$HOOK_START_MS" "$REPO"
 
 # 항상 통과 (알림만, 차단하지 않음)
 exit 0

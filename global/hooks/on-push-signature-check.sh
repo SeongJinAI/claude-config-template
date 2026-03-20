@@ -7,6 +7,10 @@
 # 1. Claude Co-Authored-By 서명 존재 확인
 # 2. 서명 발견 시 경고 표시
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/lib/log-utils.sh"
+HOOK_START_MS=$(get_ms)
+
 # stdin에서 JSON 읽기
 INPUT=$(cat)
 
@@ -130,6 +134,10 @@ check_protected_branch
 check_claude_signature
 
 echo "✅ Pre-push 검사 완료! 푸시를 진행합니다." >&2
+
+# JSONL 로그 기록
+REPO=$(get_repo_name "$CWD")
+log_hook_execution "on-push-signature-check.sh" "PreToolUse" 0 "$HOOK_START_MS" "$REPO"
 
 # 통과
 exit 0

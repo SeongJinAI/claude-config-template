@@ -5,7 +5,7 @@
 
 set -e
 
-REPO_URL="https://raw.githubusercontent.com/[YOUR_ID]/claude-dotfiles/main"
+REPO_URL="https://raw.githubusercontent.com/[YOUR_ID]/claude-config-template/main"
 TEMPLATE=${1:-spring-boot}
 
 echo "🚀 프로젝트 템플릿 적용: $TEMPLATE"
@@ -34,14 +34,14 @@ if [ -f "CLAUDE.md" ]; then
     echo "⚠️  CLAUDE.md가 이미 존재합니다. 백업 생성..."
     cp CLAUDE.md CLAUDE.md.backup
 fi
-curl -fsSL "$REPO_URL/templates/$TEMPLATE/CLAUDE.md" -o CLAUDE.md
+curl -fsSL "$REPO_URL/project-templates/$TEMPLATE/CLAUDE.md" -o CLAUDE.md
 
 # Template Rules 다운로드
 echo "📥 Template Rules 다운로드 중..."
 mkdir -p .claude/rules
 for f in "${RULE_FILES[@]}"; do
     if [ ! -f ".claude/rules/$f" ]; then
-        curl -fsSL "$REPO_URL/templates/$TEMPLATE/rules/$f" -o ".claude/rules/$f" 2>/dev/null || echo "  ⚠️ $f 다운로드 실패 (스킵)"
+        curl -fsSL "$REPO_URL/project-templates/$TEMPLATE/rules/$f" -o ".claude/rules/$f" 2>/dev/null || echo "  ⚠️ $f 다운로드 실패 (스킵)"
     else
         echo "  ⏭️  .claude/rules/$f 이미 존재 (스킵)"
     fi

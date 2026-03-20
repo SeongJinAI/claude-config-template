@@ -6,6 +6,10 @@
 # 트리거: PreToolUse (git commit)
 # 동작: 코드 변경 시 관련 문서 업데이트 경고 출력
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/lib/log-utils.sh"
+HOOK_START_MS=$(get_ms)
+
 # stdin에서 JSON 읽기
 INPUT=$(cat)
 
@@ -132,6 +136,10 @@ if [ "$ENDPOINT_CHANGES" = true ]; then
 fi
 
 echo "✅ 문서-코드 동기화 검사 완료!" >&2
+
+# JSONL 로그 기록
+REPO=$(get_repo_name "$CWD")
+log_hook_execution "on-commit-doc-sync-check.sh" "PreToolUse" 0 "$HOOK_START_MS" "$REPO"
 
 # 경고만 표시하고 통과 (차단하려면 exit 2)
 exit 0

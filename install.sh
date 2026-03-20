@@ -1,137 +1,145 @@
 #!/bin/bash
 
-# Claude Dotfiles 설치 스크립트
+# Claude 거버넌스 설치 스크립트
+# global/ 디렉토리의 내용을 ~/.claude/에 설치한다.
+#
 # 사용법:
-#   로컬 (심볼릭 링크): ./install.sh --link /path/to/claude-dotfiles
-#   원격 (다운로드):      curl -fsSL https://raw.githubusercontent.com/[YOUR_ID]/claude-dotfiles/main/install.sh | bash
+#   로컬 (심볼릭 링크): ./install.sh --link [레포경로]
+#   원격 (다운로드):     curl -fsSL https://raw.githubusercontent.com/[YOUR_ID]/claude-config-template/main/install.sh | bash
 
 set -e
 
-REPO_URL="https://raw.githubusercontent.com/[YOUR_ID]/claude-dotfiles/main"
+REPO_URL="https://raw.githubusercontent.com/[YOUR_ID]/claude-config-template/main"
 CLAUDE_DIR="$HOME/.claude"
 
-# Hook 파일 목록
-HOOK_FILES=(
-    "on-commit-quality-check.sh"
-    "on-commit-doc-sync-check.sh"
-    "on-push-signature-check.sh"
-    "on-compact-handoff-save.sh"
-    "on-prompt-handoff-remind.sh"
-    "on-prompt-api-dev-guide.sh"
-    "on-prompt-test-feedback.sh"
-)
-
-# Global Rules 파일 목록
-RULE_FILES=(
-    "예외처리_원칙.md"
-    "코드리뷰_원칙.md"
-    "개발워크플로_원칙.md"
+# global/ 안에서 ~/.claude/로 심볼릭 링크할 대상 목록
+LINK_TARGETS=(
+    "settings.json"
+    "CLAUDE.md"
+    "commands"
+    "rules"
+    "hooks"
 )
 
 # ─── 심볼릭 링크 모드 (로컬 개발용) ───
 if [ "$1" = "--link" ]; then
     DOTFILES_DIR="${2:-.}"
     DOTFILES_DIR=$(cd "$DOTFILES_DIR" && pwd)
+    GLOBAL_DIR="$DOTFILES_DIR/global"
 
-    echo "🔗 심볼릭 링크 모드: $DOTFILES_DIR"
-
-    # hooks 디렉토리 심볼릭 링크
-    if [ -L "$CLAUDE_DIR/hooks" ]; then
-        echo "⚠️  기존 심볼릭 링크 제거..."
-        rm "$CLAUDE_DIR/hooks"
-    elif [ -d "$CLAUDE_DIR/hooks" ]; then
-        echo "⚠️  기존 hooks 디렉토리 백업 → hooks.backup/"
-        mv "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/hooks.backup"
+    if [ ! -d "$GLOBAL_DIR" ]; then
+        echo "오류: $GLOBAL_DIR 디렉토리가 없습니다."
+        exit 1
     fi
 
-    ln -s "$DOTFILES_DIR/hooks" "$CLAUDE_DIR/hooks"
-    echo "✅ ~/.claude/hooks → $DOTFILES_DIR/hooks"
-
-    # rules 디렉토리 심볼릭 링크
-    if [ -d "$DOTFILES_DIR/global/rules" ]; then
-        if [ -L "$CLAUDE_DIR/rules" ]; then
-            echo "⚠️  기존 rules 심볼릭 링크 제거..."
-            rm "$CLAUDE_DIR/rules"
-        elif [ -d "$CLAUDE_DIR/rules" ]; then
-            echo "⚠️  기존 rules 디렉토리 백업 → rules.backup/"
-            mv "$CLAUDE_DIR/rules" "$CLAUDE_DIR/rules.backup"
-        fi
-
-        ln -s "$DOTFILES_DIR/global/rules" "$CLAUDE_DIR/rules"
-        echo "✅ ~/.claude/rules → $DOTFILES_DIR/global/rules"
-    fi
-
+    echo "심볼릭 링크 모드: $GLOBAL_DIR → $CLAUDE_DIR"
     echo ""
-    echo "📁 연결된 Hook 스크립트:"
-    for f in "${HOOK_FILES[@]}"; do
-        if [ -f "$CLAUDE_DIR/hooks/$f" ]; then
-            echo "   ✓ $f"
-        else
-            echo "   ✗ $f (없음)"
+
+    mkdir -p "$CLAUDE_DIR"
+
+    for target in "${LINK_TARGETS[@]}"; do
+        SOURCE="$GLOBAL_DIR/$target"
+        DEST="$CLAUDE_DIR/$target"
+
+        # 소스 존재 확인
+        if [ ! -e "$SOURCE" ]; then
+            echo "  건너뜀: $target (소스 없음)"
+            continue
         fi
+
+        # 기존 대상 처리
+        if [ -L "$DEST" ]; then
+            rm "$DEST"
+        elif [ -e "$DEST" ]; then
+            mv "$DEST" "${DEST}.backup"
+            echo "  백업: $target → ${target}.backup"
+        fi
+
+        ln -s "$SOURCE" "$DEST"
+        echo "  연결: ~/.claude/$target → global/$target"
     done
 
     echo ""
-    echo "📁 연결된 Global Rules:"
-    for f in "${RULE_FILES[@]}"; do
-        if [ -f "$CLAUDE_DIR/rules/$f" ]; then
-            echo "   ✓ $f"
-        else
-            echo "   ✗ $f (없음)"
-        fi
+    echo "설치 완료. 연결 상태:"
+    echo ""
+
+    # hooks 확인
+    echo "  hooks/"
+    for f in "$CLAUDE_DIR/hooks/"on-*.sh; do
+        [ -f "$f" ] && echo "    $(basename "$f")"
     done
+
+    # commands 확인
+    echo "  commands/"
+    for f in "$CLAUDE_DIR/commands/"*.md; do
+        [ -f "$f" ] && echo "    $(basename "$f")"
+    done
+
+    # rules 확인
+    echo "  rules/"
+    for f in "$CLAUDE_DIR/rules/"*.md; do
+        [ -f "$f" ] && echo "    $(basename "$f")"
+    done
+
+    echo ""
+    echo "프로젝트 템플릿 적용은 별도로 실행:"
+    echo "  ./scripts/init-project.sh spring-boot|fastapi|nextjs"
+
     exit 0
 fi
 
 # ─── 다운로드 모드 (원격 설치용) ───
-echo "🚀 Claude Dotfiles 설치 시작..."
+echo "Claude 거버넌스 설치 시작..."
 
-# ~/.claude 디렉토리 생성
 mkdir -p "$CLAUDE_DIR"
 mkdir -p "$CLAUDE_DIR/commands"
-
-# 전역 설정 다운로드
-echo "📥 전역 설정 다운로드 중..."
+mkdir -p "$CLAUDE_DIR/rules"
+mkdir -p "$CLAUDE_DIR/hooks/lib"
 
 # settings.json
+echo "settings.json 다운로드..."
 if [ -f "$CLAUDE_DIR/settings.json" ]; then
-    echo "⚠️  settings.json이 이미 존재합니다. 백업 생성..."
     cp "$CLAUDE_DIR/settings.json" "$CLAUDE_DIR/settings.json.backup"
 fi
 curl -fsSL "$REPO_URL/global/settings.json" -o "$CLAUDE_DIR/settings.json"
 
-# 전역 CLAUDE.md (사용자 홈에 설치 - 선택적)
-# curl -fsSL "$REPO_URL/global/CLAUDE.md" -o "$HOME/CLAUDE.md"
+# CLAUDE.md
+echo "CLAUDE.md 다운로드..."
+curl -fsSL "$REPO_URL/global/CLAUDE.md" -o "$CLAUDE_DIR/CLAUDE.md" 2>/dev/null || true
 
-# 커스텀 명령어 다운로드
-echo "📥 커스텀 명령어 다운로드 중..."
-curl -fsSL "$REPO_URL/global/commands/clear.md" -o "$CLAUDE_DIR/commands/clear.md" 2>/dev/null || true
-
-# 훅 스크립트 다운로드
-echo "📥 Claude Code 훅 다운로드 중..."
-mkdir -p "$CLAUDE_DIR/hooks"
-for f in "${HOOK_FILES[@]}"; do
-    curl -fsSL "$REPO_URL/hooks/$f" -o "$CLAUDE_DIR/hooks/$f" 2>/dev/null || echo "  ⚠️ $f 다운로드 실패 (스킵)"
-done
-chmod +x "$CLAUDE_DIR/hooks/"*.sh
-
-# Global Rules 다운로드
-echo "📥 Global Rules 다운로드 중..."
-mkdir -p "$CLAUDE_DIR/rules"
-for f in "${RULE_FILES[@]}"; do
-    curl -fsSL "$REPO_URL/global/rules/$f" -o "$CLAUDE_DIR/rules/$f" 2>/dev/null || echo "  ⚠️ $f 다운로드 실패 (스킵)"
+# commands
+echo "commands/ 다운로드..."
+for f in clear gen-spec verify-docs feedback-to-pr project-chat; do
+    curl -fsSL "$REPO_URL/global/commands/${f}.md" -o "$CLAUDE_DIR/commands/${f}.md" 2>/dev/null || true
 done
 
+# rules
+echo "rules/ 다운로드..."
+for f in 예외처리_원칙 코드리뷰_원칙 개발워크플로_원칙; do
+    curl -fsSL "$REPO_URL/global/rules/${f}.md" -o "$CLAUDE_DIR/rules/${f}.md" 2>/dev/null || true
+done
+
+# hooks
+echo "hooks/ 다운로드..."
+for f in on-commit-quality-check on-commit-doc-sync-check on-push-signature-check \
+         on-compact-handoff-save on-prompt-handoff-remind on-prompt-api-dev-guide \
+         on-prompt-test-feedback on-prompt-log; do
+    curl -fsSL "$REPO_URL/global/hooks/${f}.sh" -o "$CLAUDE_DIR/hooks/${f}.sh" 2>/dev/null || true
+done
+for f in log-utils write-checkpoint; do
+    curl -fsSL "$REPO_URL/global/hooks/lib/${f}.sh" -o "$CLAUDE_DIR/hooks/lib/${f}.sh" 2>/dev/null || true
+done
+chmod +x "$CLAUDE_DIR/hooks/"*.sh "$CLAUDE_DIR/hooks/lib/"*.sh 2>/dev/null || true
+
 echo ""
-echo "✅ 설치 완료!"
+echo "설치 완료!"
 echo ""
-echo "📁 설치된 파일:"
-echo "   - $CLAUDE_DIR/settings.json"
-echo "   - $CLAUDE_DIR/commands/"
-echo "   - $CLAUDE_DIR/hooks/"
-echo "   - $CLAUDE_DIR/rules/"
+echo "설치된 항목:"
+echo "  ~/.claude/settings.json"
+echo "  ~/.claude/CLAUDE.md"
+echo "  ~/.claude/commands/ (5개)"
+echo "  ~/.claude/rules/ (3개)"
+echo "  ~/.claude/hooks/ (8개 + lib 2개)"
 echo ""
-echo "💡 프로젝트 템플릿 적용:"
-echo "   curl -fsSL $REPO_URL/scripts/init-project.sh | bash -s spring-boot"
-echo "   curl -fsSL $REPO_URL/scripts/init-project.sh | bash -s fastapi"
-echo ""
+echo "프로젝트 템플릿 적용:"
+echo "  curl -fsSL $REPO_URL/scripts/init-project.sh | bash -s spring-boot"

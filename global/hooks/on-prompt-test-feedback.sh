@@ -8,7 +8,9 @@
 # 출력: stdout → Claude 컨텍스트에 주입됨
 # 차단: 비차단 (항상 exit 0)
 
-LOG_FILE="/tmp/claude-hooks.log"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/lib/log-utils.sh"
+HOOK_START_MS=$(get_ms)
 
 # stdin에서 JSON 읽기
 INPUT=$(cat)
@@ -43,7 +45,7 @@ if ! echo "$PROMPT" | grep -q "테스트 결과 피드백 반영"; then
     exit 0
 fi
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] test-feedback-hook 트리거됨" >> "$LOG_FILE"
+# 키워드 매칭됨
 
 # ─── 가드 조건 2: 프로젝트 확인 ───
 cd "$CWD" 2>/dev/null || exit 0
@@ -97,7 +99,7 @@ if [ "$FILE_COUNT" -eq 0 ]; then
     exit 0
 fi
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] 테스트 결과 $FILE_COUNT개 파일 로드: $DATE_NAME" >> "$LOG_FILE"
+# 테스트 결과 로드됨
 
 # ─── stdout 출력: Claude 컨텍스트에 주입 ───
 echo ""
@@ -133,6 +135,10 @@ done
 
 echo "</test-feedback-hook>"
 echo ""
+
+# JSONL 로그 기록
+REPO=$(get_repo_name "$CWD")
+log_hook_execution "on-prompt-test-feedback.sh" "UserPromptSubmit" 0 "$HOOK_START_MS" "$REPO"
 
 # 항상 비차단
 exit 0
