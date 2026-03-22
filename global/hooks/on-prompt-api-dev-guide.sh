@@ -71,7 +71,7 @@ fi
 
 # 키워드 매칭됨 — 로그 기록은 하단에서 처리
 
-# ─── 가드 조건 4: 프로젝트 확인 (Inconus ERP인지) ───
+# ─── 가드 조건 4: 프로젝트 확인 ───
 cd "$CWD" 2>/dev/null || exit 0
 
 PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -84,51 +84,80 @@ if [ ! -f "$CLAUDE_MD" ]; then
     exit 0
 fi
 
-if ! grep -q "Inconus ERP" "$CLAUDE_MD" 2>/dev/null; then
-    exit 0
-fi
+# ─── 지식 레포 경로 결정 ───
+_resolve_knowledge_repo() {
+    if [ -n "$CLAUDE_KNOWLEDGE_REPO" ]; then
+        echo "$CLAUDE_KNOWLEDGE_REPO"
+        return
+    fi
+    local env_file="$HOME/.claude/.env"
+    if [ -f "$env_file" ]; then
+        local dir=$(grep "^CLAUDE_KNOWLEDGE_REPO=" "$env_file" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+        if [ -n "$dir" ]; then
+            echo "$dir"
+            return
+        fi
+    fi
+    echo ""
+}
 
-# ─── PDF 목록 수집 ───
-STORYBOARD_DIR="$PROJECT_ROOT/src/docs/기획문서"
+KNOWLEDGE_REPO=$(_resolve_knowledge_repo)
+
+# ─── 기획문서 탐색 (프로젝트별 위치 자동 감지) ───
+STORYBOARD_DIR=""
 PDF_LIST=""
-if [ -d "$STORYBOARD_DIR" ]; then
+for candidate in "$PROJECT_ROOT/src/docs/기획문서" "$PROJECT_ROOT/docs/기획문서" "$PROJECT_ROOT/docs/storyboard"; do
+    if [ -d "$candidate" ]; then
+        STORYBOARD_DIR="$candidate"
+        break
+    fi
+done
+
+if [ -n "$STORYBOARD_DIR" ]; then
     PDF_LIST=$(ls "$STORYBOARD_DIR"/*.pdf 2>/dev/null | while read -r f; do
         basename "$f"
     done)
 fi
 
 # ─── stdout 출력: Claude 컨텍스트에 주입 ───
+PROJECT_NAME=$(basename "$PROJECT_ROOT")
 echo ""
 echo "<api-dev-guide-hook>"
 echo "API_DEV_WORKFLOW_DETECTED: true"
+echo "PROJECT: $PROJECT_NAME"
 echo ""
-echo "== 스토리보드 기반 API 개발 워크플로 =="
+echo "== 기능 개발 워크플로 =="
 echo ""
 echo "[사용 가능한 기획문서]"
 if [ -n "$PDF_LIST" ]; then
+    RELATIVE_DIR=$(echo "$STORYBOARD_DIR" | sed "s|$PROJECT_ROOT/||")
     echo "$PDF_LIST" | while read -r pdf; do
-        echo "  - src/docs/기획문서/$pdf"
+        echo "  - $RELATIVE_DIR/$pdf"
     done
 else
-    echo "  (기획문서 없음 - src/docs/기획문서/ 디렉토리를 확인하세요)"
+    echo "  (기획문서 없음)"
 fi
 echo ""
-echo "[6단계 개발 파이프라인]"
-echo "  1. 스토리보드 PDF 분석 → UI 요소를 API 엔드포인트로 매핑"
-echo "  2. 기능명세서 작성 (src/docs/{기능명}_기능명세서.md)"
-echo "  3. 아키텍처 설명서 작성 (src/docs/architecture/)"
-echo "  4. 코드 구현: Entity → Repository → DTO → Service → Controller → Test"
-echo "  5. 사용자매뉴얼 작성 (src/docs/user-guide/)"
-echo "  6. 부수 문서: ERROR_MESSAGES.md, 아키텍처 특이사항 업데이트"
+echo "[개발 파이프라인]"
+echo "  1. 기획문서 분석 → 요구사항 파악"
+echo "  2. /feature-docs-plan → 기능명세서 + 아키텍처 초안 생성"
+echo "  3. 코드 구현"
+echo "  4. /feature-docs-complete → 7종 문서 일괄 생성"
+echo "  5. 테스트 → PR"
 echo ""
-echo "[참고] CLAUDE.md 섹션 9 '스토리보드 기반 API 개발 워크플로' 참조"
+if [ -n "$KNOWLEDGE_REPO" ]; then
+    echo "[문서 저장 위치] $KNOWLEDGE_REPO"
+else
+    echo "[주의] ~/.claude/.env에 CLAUDE_KNOWLEDGE_REPO가 설정되지 않았습니다."
+fi
+echo ""
 echo "[참고] 유사 기능의 기존 코드를 먼저 분석한 후 개발을 시작하세요"
 echo "</api-dev-guide-hook>"
 echo ""
 
-# 워크플로우 체크포인트 자동 기록 (API 개발 파이프라인 시작)
+# 워크플로우 체크포인트 자동 기록
 REPO=$(get_repo_name "$CWD")
-"${SCRIPT_DIR}/lib/write-checkpoint.sh" "API 개발 파이프라인" "기획문서 분석" 1 6 2>/dev/null
+"${SCRIPT_DIR}/lib/write-checkpoint.sh" "기능 개발 파이프라인" "기획문서 분석" 1 5 2>/dev/null
 
 # JSONL 로그 기록
 log_hook_execution "on-prompt-api-dev-guide.sh" "UserPromptSubmit" 0 "$HOOK_START_MS" "$REPO"

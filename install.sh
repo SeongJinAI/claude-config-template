@@ -16,7 +16,7 @@ CLAUDE_DIR="$HOME/.claude"
 LINK_TARGETS=(
     "settings.json"
     "CLAUDE.md"
-    "commands"
+    "skills"
     "rules"
     "hooks"
 )
@@ -36,6 +36,12 @@ if [ "$1" = "--link" ]; then
     echo ""
 
     mkdir -p "$CLAUDE_DIR"
+
+    # 기존 commands 심볼릭 링크가 남아있으면 제거
+    if [ -L "$CLAUDE_DIR/commands" ]; then
+        rm "$CLAUDE_DIR/commands"
+        echo "  정리: 기존 commands 심볼릭 링크 제거"
+    fi
 
     for target in "${LINK_TARGETS[@]}"; do
         SOURCE="$GLOBAL_DIR/$target"
@@ -69,10 +75,10 @@ if [ "$1" = "--link" ]; then
         [ -f "$f" ] && echo "    $(basename "$f")"
     done
 
-    # commands 확인
-    echo "  commands/"
-    for f in "$CLAUDE_DIR/commands/"*.md; do
-        [ -f "$f" ] && echo "    $(basename "$f")"
+    # skills 확인
+    echo "  skills/"
+    for d in "$CLAUDE_DIR/skills/"*/; do
+        [ -d "$d" ] && echo "    $(basename "$d")/"
     done
 
     # rules 확인
@@ -80,6 +86,60 @@ if [ "$1" = "--link" ]; then
     for f in "$CLAUDE_DIR/rules/"*.md; do
         [ -f "$f" ] && echo "    $(basename "$f")"
     done
+
+    # ─── .env 설정 (환경변수) ───
+    ENV_FILE="$CLAUDE_DIR/.env"
+    echo ""
+
+    if [ -f "$ENV_FILE" ]; then
+        echo "기존 ~/.claude/.env 발견:"
+        cat "$ENV_FILE"
+        echo ""
+        read -rp ".env를 다시 설정하시겠습니까? (y/N): " RESET_ENV
+        if [ "$RESET_ENV" != "y" ] && [ "$RESET_ENV" != "Y" ]; then
+            echo "  .env 유지"
+            echo ""
+            echo "프로젝트 템플릿 적용은 별도로 실행:"
+            echo "  ./scripts/init-project.sh spring-boot|fastapi|nextjs"
+            exit 0
+        fi
+    fi
+
+    echo "환경변수를 설정합니다. (빈 입력 시 기본값 사용)"
+    echo ""
+
+    # 로그 디렉토리
+    DEFAULT_LOG_DIR="$HOME/.claude/logs"
+    read -rp "CLAUDE_LOG_DIR (Hook 로그 저장 경로) [$DEFAULT_LOG_DIR]: " INPUT_LOG_DIR
+    LOG_DIR="${INPUT_LOG_DIR:-$DEFAULT_LOG_DIR}"
+
+    # 테스트 레포
+    read -rp "CLAUDE_TEST_REPO (테스트 레포 절대경로) []: " INPUT_TEST_REPO
+    TEST_REPO="${INPUT_TEST_REPO:-}"
+
+    # 지식 레포
+    read -rp "CLAUDE_KNOWLEDGE_REPO (지식 레포 절대경로) []: " INPUT_KNOWLEDGE_REPO
+    KNOWLEDGE_REPO="${INPUT_KNOWLEDGE_REPO:-}"
+
+    # .env 파일 생성
+    cat > "$ENV_FILE" <<ENVEOF
+CLAUDE_LOG_DIR=$LOG_DIR
+CLAUDE_TEST_REPO=$TEST_REPO
+CLAUDE_KNOWLEDGE_REPO=$KNOWLEDGE_REPO
+ENVEOF
+
+    echo ""
+    echo "  생성: ~/.claude/.env"
+    cat "$ENV_FILE" | sed 's/^/    /'
+
+    # 로그 디렉토리 생성
+    mkdir -p "$LOG_DIR"/{hooks,prompts,workflow} 2>/dev/null
+
+    # 지식 레포 디렉토리 생성 (경로가 있고 디렉토리가 없으면)
+    if [ -n "$KNOWLEDGE_REPO" ] && [ ! -d "$KNOWLEDGE_REPO" ]; then
+        mkdir -p "$KNOWLEDGE_REPO"/{specs,architecture,manuals,errors,troubleshooting,insights}
+        echo "  생성: 지식 레포 디렉토리 ($KNOWLEDGE_REPO)"
+    fi
 
     echo ""
     echo "프로젝트 템플릿 적용은 별도로 실행:"
@@ -92,9 +152,14 @@ fi
 echo "Claude 거버넌스 설치 시작..."
 
 mkdir -p "$CLAUDE_DIR"
-mkdir -p "$CLAUDE_DIR/commands"
 mkdir -p "$CLAUDE_DIR/rules"
 mkdir -p "$CLAUDE_DIR/hooks/lib"
+
+# 기존 commands 디렉토리 정리
+if [ -d "$CLAUDE_DIR/commands" ]; then
+    mv "$CLAUDE_DIR/commands" "$CLAUDE_DIR/commands.backup"
+    echo "기존 commands/ → commands.backup/ 으로 백업"
+fi
 
 # settings.json
 echo "settings.json 다운로드..."
@@ -107,10 +172,27 @@ curl -fsSL "$REPO_URL/global/settings.json" -o "$CLAUDE_DIR/settings.json"
 echo "CLAUDE.md 다운로드..."
 curl -fsSL "$REPO_URL/global/CLAUDE.md" -o "$CLAUDE_DIR/CLAUDE.md" 2>/dev/null || true
 
-# commands
-echo "commands/ 다운로드..."
-for f in clear gen-spec verify-docs feedback-to-pr project-chat; do
-    curl -fsSL "$REPO_URL/global/commands/${f}.md" -o "$CLAUDE_DIR/commands/${f}.md" 2>/dev/null || true
+# skills
+echo "skills/ 다운로드..."
+SKILLS=(clear feedback-to-pr notion project-chat feature-docs-plan feature-docs-complete)
+for skill in "${SKILLS[@]}"; do
+    mkdir -p "$CLAUDE_DIR/skills/$skill"
+    curl -fsSL "$REPO_URL/global/skills/${skill}/SKILL.md" -o "$CLAUDE_DIR/skills/${skill}/SKILL.md" 2>/dev/null || true
+done
+
+# feature-docs-plan 템플릿
+mkdir -p "$CLAUDE_DIR/skills/feature-docs-plan/references/templates"
+for f in feature-spec-template architecture-template; do
+    curl -fsSL "$REPO_URL/global/skills/feature-docs-plan/references/templates/${f}.md" \
+        -o "$CLAUDE_DIR/skills/feature-docs-plan/references/templates/${f}.md" 2>/dev/null || true
+done
+
+# feature-docs-complete 템플릿
+mkdir -p "$CLAUDE_DIR/skills/feature-docs-complete/references/templates"
+for f in feature-spec-update-guide architecture-update-guide user-manual-template \
+         error-messages-template troubleshooting-template insights-template architecture-notes-template; do
+    curl -fsSL "$REPO_URL/global/skills/feature-docs-complete/references/templates/${f}.md" \
+        -o "$CLAUDE_DIR/skills/feature-docs-complete/references/templates/${f}.md" 2>/dev/null || true
 done
 
 # rules
@@ -132,14 +214,60 @@ done
 chmod +x "$CLAUDE_DIR/hooks/"*.sh "$CLAUDE_DIR/hooks/lib/"*.sh 2>/dev/null || true
 
 echo ""
+echo "파일 설치 완료. 환경변수를 설정합니다."
+echo ""
+
+ENV_FILE="$CLAUDE_DIR/.env"
+
+if [ -f "$ENV_FILE" ]; then
+    echo "기존 ~/.claude/.env 발견:"
+    cat "$ENV_FILE"
+    echo ""
+    read -rp ".env를 다시 설정하시겠습니까? (y/N): " RESET_ENV
+    if [ "$RESET_ENV" != "y" ] && [ "$RESET_ENV" != "Y" ]; then
+        echo "  .env 유지"
+        echo ""
+        echo "설치 완료!"
+        exit 0
+    fi
+fi
+
+echo "환경변수를 설정합니다. (빈 입력 시 기본값 사용)"
+echo ""
+
+DEFAULT_LOG_DIR="$HOME/.claude/logs"
+read -rp "CLAUDE_LOG_DIR (Hook 로그 저장 경로) [$DEFAULT_LOG_DIR]: " INPUT_LOG_DIR
+LOG_DIR="${INPUT_LOG_DIR:-$DEFAULT_LOG_DIR}"
+
+read -rp "CLAUDE_TEST_REPO (테스트 레포 절대경로) []: " INPUT_TEST_REPO
+TEST_REPO="${INPUT_TEST_REPO:-}"
+
+read -rp "CLAUDE_KNOWLEDGE_REPO (지식 레포 절대경로) []: " INPUT_KNOWLEDGE_REPO
+KNOWLEDGE_REPO="${INPUT_KNOWLEDGE_REPO:-}"
+
+cat > "$ENV_FILE" <<ENVEOF
+CLAUDE_LOG_DIR=$LOG_DIR
+CLAUDE_TEST_REPO=$TEST_REPO
+CLAUDE_KNOWLEDGE_REPO=$KNOWLEDGE_REPO
+ENVEOF
+
+mkdir -p "$LOG_DIR"/{hooks,prompts,workflow} 2>/dev/null
+
+if [ -n "$KNOWLEDGE_REPO" ] && [ ! -d "$KNOWLEDGE_REPO" ]; then
+    mkdir -p "$KNOWLEDGE_REPO"/{specs,architecture,manuals,errors,troubleshooting,insights}
+    echo "  생성: 지식 레포 디렉토리 ($KNOWLEDGE_REPO)"
+fi
+
+echo ""
 echo "설치 완료!"
 echo ""
 echo "설치된 항목:"
 echo "  ~/.claude/settings.json"
 echo "  ~/.claude/CLAUDE.md"
-echo "  ~/.claude/commands/ (5개)"
+echo "  ~/.claude/skills/ (${#SKILLS[@]}개)"
 echo "  ~/.claude/rules/ (3개)"
 echo "  ~/.claude/hooks/ (8개 + lib 2개)"
+echo "  ~/.claude/.env (환경변수)"
 echo ""
 echo "프로젝트 템플릿 적용:"
 echo "  curl -fsSL $REPO_URL/scripts/init-project.sh | bash -s spring-boot"

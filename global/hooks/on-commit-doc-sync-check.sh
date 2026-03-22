@@ -110,9 +110,9 @@ if [ -n "$CODE_FILES" ] && [ -z "$DOC_FILES" ]; then
         echo "" >&2
     fi
 
-    echo "💡 권장 조치:" >&2
+    echo "권장 조치:" >&2
     echo "   - 관련 문서 확인 및 업데이트" >&2
-    echo "   - /verify-docs 명령으로 동기화 상태 확인" >&2
+    echo "   - /feature-docs-complete 로 문서 일괄 갱신" >&2
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >&2
     echo "" >&2
 fi

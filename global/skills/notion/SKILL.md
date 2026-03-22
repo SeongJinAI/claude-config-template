@@ -2,7 +2,7 @@
 description: Notion 업무 체크리스트 관리
 ---
 
-# /notion 명령어
+# /notion
 
 Notion 업무 페이지의 체크리스트 항목을 관리합니다.
 
@@ -17,32 +17,29 @@ Notion 업무 페이지의 체크리스트 항목을 관리합니다.
 
 ## 수행 작업
 
-### 1. add — 항목 추가
+### add — 항목 추가
 
 1. 메뉴명으로 대상 toggle block ID 결정
-2. Notion API (`PATCH /blocks/{toggle_id}/children`)로 to_do 블록 추가
+2. Notion API로 to_do 블록 추가
 3. 항목 형식: `구분(API/DB/확인) > [기능명] > 작업유형(신규/수정/개선/제거) > 설명`
-4. 추가 결과 출력
 
-### 2. done — 항목 체크 처리
+### done — 항목 체크 처리
 
 1. 키워드로 대상 메뉴 하위 to_do 블록 검색
 2. 매칭되는 항목을 `checked: true`로 업데이트
-3. 변경 결과 출력
 
-### 3. list — 항목 조회
+### list — 항목 조회
 
 1. 메뉴 지정 시: 해당 toggle 하위 to_do 항목 목록 출력
 2. 메뉴 미지정 시: 전체 메뉴(toggle) 목록 출력
 
-## 프로젝트별 구현
+## 프로젝트별 설정
 
-이 명령은 인터페이스입니다. 프로젝트별로 `.claude/commands/notion.md`를 오버라이딩하여 다음을 정의해야 합니다:
+이 스킬은 인터페이스입니다. 프로젝트별로 다음을 정의해야 합니다:
 
-- **Notion 토큰 위치**: 프로젝트 `.claude/.mcp.json` 등
+- **Notion 토큰 위치**: `.claude/.mcp.json` 등
 - **페이지 ID**: 대상 Notion 페이지
 - **메뉴 → Block ID 매핑**: 프로젝트 메뉴 구조에 맞는 매핑 테이블
-- **API 호출 방식**: curl 직접 호출 또는 MCP 도구 사용
 
 ## 출력 형식
 

@@ -211,54 +211,65 @@ Global  ─── 회사/조직 보안 경계를 정의 (무엇을 허용하고 
 ## 구조
 
 ```
-claude-dotfiles/
+claude-config-template/
 ├── README.md
 ├── install.sh                        # 설치 스크립트 (--link 또는 curl)
 │
-├── global/                           # Global 레벨 설정
+├── global/                           # Global 레벨 설정 → ~/.claude/ 심볼릭 링크
 │   ├── CLAUDE.md                     # 전역 지침
-│   ├── settings.json                 # permissions + language
+│   ├── settings.json                 # permissions + hooks + language
 │   ├── rules/                        # Global Rules → ~/.claude/rules/
-│   │   ├── 예외처리_원칙.md           # 4계층 분류, ERR_, 로깅
-│   │   ├── 코드리뷰_원칙.md           # 시나리오 검증, DDD
-│   │   └── 개발워크플로_원칙.md        # 개발순서, 산출물, HANDOFF
-│   └── commands/
-│       └── clear.md                  # /clear 커스텀 명령어
+│   │   ├── 예외처리_원칙.md
+│   │   ├── 코드리뷰_원칙.md
+│   │   └── 개발워크플로_원칙.md
+│   ├── skills/                       # Skills → ~/.claude/skills/
+│   │   ├── clear/                    # 세션 종료 전 HANDOFF 인수인계
+│   │   ├── feedback-to-pr/           # 피드백 → PR 자동 생성
+│   │   ├── notion/                   # Notion 체크리스트 관리
+│   │   ├── project-chat/             # 프로젝트 문서 기반 Q&A
+│   │   ├── feature-docs-plan/        # 기획 단계: 명세서+아키텍처 초안
+│   │   └── feature-docs-complete/    # 구현 완료: 7종 문서 일괄 생성
+│   └── hooks/                        # Hook 스크립트 → ~/.claude/hooks/
+│       ├── on-commit-quality-check.sh
+│       ├── on-commit-doc-sync-check.sh
+│       ├── on-push-signature-check.sh
+│       ├── on-compact-handoff-save.sh
+│       ├── on-prompt-handoff-remind.sh
+│       ├── on-prompt-api-dev-guide.sh
+│       ├── on-prompt-test-feedback.sh
+│       ├── on-prompt-log.sh
+│       └── lib/
+│           ├── log-utils.sh          # JSONL 로깅 유틸리티
+│           └── write-checkpoint.sh   # 워크플로우 체크포인트
 │
-├── templates/                        # 프로젝트 CLAUDE.md + Rules 템플릿
+├── project-templates/                # 프로젝트 초기화 템플릿
 │   ├── spring-boot/
-│   │   ├── CLAUDE.md
-│   │   └── rules/
-│   │       ├── 코드스타일_가이드.md    # Entity/DTO/Controller/Service 컨벤션
-│   │       └── 예외처리_가이드.md      # BusinessException, ErrorCode
 │   ├── fastapi/
-│   │   ├── CLAUDE.md
-│   │   └── rules/
-│   │       ├── 코드스타일_가이드.md    # Router/Schema/Service 컨벤션
-│   │       └── 예외처리_가이드.md      # BusinessError, exception_handler
 │   └── nextjs/
-│       ├── CLAUDE.md
-│       └── rules/
-│           └── 코드스타일_가이드.md    # App Router/Component/Zustand 컨벤션
 │
-├── hooks/                            # Claude Code 훅 스크립트
-│   ├── on-commit-quality-check.sh    # git commit 전 코드 품질 검사
-│   ├── on-commit-doc-sync-check.sh   # git commit 시 문서-코드 동기화 확인
-│   ├── on-push-signature-check.sh    # git push 전 서명/브랜치 확인
-│   ├── on-compact-handoff-save.sh    # compact 전 HANDOFF.md 저장 알림
-│   ├── on-prompt-handoff-remind.sh   # /clear·/compact 시 HANDOFF 리마인더
-│   └── on-prompt-api-dev-guide.sh    # 신규 API 개발 워크플로 가이드 (플랜모드)
-│
-├── docs/
-│   └── templates/                    # 문서 템플릿
-│       ├── SPEC_TEMPLATE.md          # 기능명세서
-│       ├── MANUAL_TEMPLATE.md        # 사용자매뉴얼
-│       ├── FEEDBACK_TEMPLATE.md      # 피드백
-│       └── STORYBOARD_WORKFLOW.md    # 스토리보드 기반 개발 워크플로
+├── doc-formats/                      # 참고용 문서 양식 (레거시)
 │
 └── scripts/
-    ├── init-project.sh               # 프로젝트 초기화 (CLAUDE.md + Rules 복사)
+    ├── init-project.sh               # 프로젝트 초기화
     └── sync.sh                       # 설정 동기화
+```
+
+## 5-레포 시스템 상호작용
+
+```
+거버넌스 (이 레포)
+  │  install.sh → ~/.claude/ 심볼릭 링크
+  │  모든 레포에서 Hook 자동 발동
+  │
+  ├──→ 프로젝트 레포: 코드 품질 검사, 문서 동기화 경고, 워크플로우 가이드
+  ├──→ 테스트 레포: 테스트 피드백 주입
+  ├──→ 지식 레포: feature-docs skills로 문서 저장
+  └──→ 대시보드: JSONL 로그 → 시각화
+
+환경변수 (~/.claude/.env):
+  CLAUDE_LOG_DIR        → 대시보드가 읽는 JSONL 로그 경로
+  CLAUDE_TEST_REPO      → 테스트 레포 경로 (테스트 피드백 Hook용)
+  CLAUDE_KNOWLEDGE_REPO → 지식 레포 경로 (문서 저장 Skills용)
 ```
 
 ---
@@ -299,17 +310,18 @@ cp hooks/*.sh ~/.claude/hooks/ && chmod +x ~/.claude/hooks/*.sh
 
 ### 새 프로젝트 템플릿
 
-1. `templates/[프레임워크명]/CLAUDE.md` 작성
-2. `templates/[프레임워크명]/rules/` 에 컨벤션 파일 추가
+1. `project-templates/[프레임워크명]/CLAUDE.md` 작성
+2. `project-templates/[프레임워크명]/rules/` 에 컨벤션 파일 추가
 3. `scripts/init-project.sh` 에 템플릿 등록
 
 ### 새 Hook 추가
 
-1. `hooks/on-{이벤트}-{목적}.sh` 작성 + `chmod +x`
-2. 프로젝트의 `.claude/settings.json`에 등록
+1. `global/hooks/on-{이벤트}-{목적}.sh` 작성 + `chmod +x`
+2. `global/settings.json`에 등록
 3. 심볼릭 링크 사용 시 자동 반영
 
-### 새 문서 템플릿
+### 새 Skill 추가
 
-1. `docs/templates/{TEMPLATE_NAME}.md` 생성
-2. `[placeholder]` 패턴으로 커스터마이징 포인트 표시
+1. `global/skills/[스킬명]/SKILL.md` 생성
+2. 필요 시 `references/templates/` 하위에 양식 추가
+3. 심볼릭 링크 사용 시 자동 반영, 다운로드 모드는 install.sh 업데이트 필요

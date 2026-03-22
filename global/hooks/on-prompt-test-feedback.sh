@@ -56,16 +56,32 @@ if [ -z "$PROJECT_ROOT" ]; then
 fi
 
 # ─── 테스트 결과 경로 결정 ───
-# 규칙: {프로젝트}-test/results/local/ 디렉토리에서 최신 날짜 폴더 탐색
-PROJECT_NAME=$(basename "$PROJECT_ROOT")
-TEST_RESULTS_DIR="${PROJECT_ROOT}-test/results/local"
+# 우선순위: 1) CLAUDE_TEST_REPO 환경변수, 2) ~/.claude/.env, 3) {프로젝트}-test 폴백
+_resolve_test_repo() {
+    if [ -n "$CLAUDE_TEST_REPO" ]; then
+        echo "$CLAUDE_TEST_REPO"
+        return
+    fi
+    local env_file="$HOME/.claude/.env"
+    if [ -f "$env_file" ]; then
+        local dir=$(grep "^CLAUDE_TEST_REPO=" "$env_file" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+        if [ -n "$dir" ]; then
+            echo "$dir"
+            return
+        fi
+    fi
+    echo "${PROJECT_ROOT}-test"
+}
+
+TEST_REPO=$(_resolve_test_repo)
+TEST_RESULTS_DIR="${TEST_REPO}/results/local"
 
 if [ ! -d "$TEST_RESULTS_DIR" ]; then
     echo ""
     echo "<test-feedback-hook>"
     echo "ERROR: 테스트 결과 디렉토리를 찾을 수 없습니다."
     echo "경로: $TEST_RESULTS_DIR"
-    echo "테스트 레포가 {프로젝트명}-test 규칙을 따르는지 확인하세요."
+    echo "~/.claude/.env에 CLAUDE_TEST_REPO 경로를 설정하세요."
     echo "</test-feedback-hook>"
     echo ""
     exit 0

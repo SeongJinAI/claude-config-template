@@ -71,8 +71,16 @@ H1 제목 바로 아래, 인용 부호(`>`) 사용:
     ↓ 구현
 프로젝트 (.claude/rules/문서_템플릿_가이드.md)  ← 구현체: 프로젝트별 상세 커스텀
     ↓ 적용
-실제 문서 (src/docs/)          ← 인스턴스: 실제 작성된 문서
+지식 레포 (CLAUDE_KNOWLEDGE_REPO)  ← 인스턴스: 실제 작성된 문서
 ```
+
+## Skills와의 관계
+
+`global/skills/feature-docs-*/references/templates/`에도 간소화된 양식이 있습니다.
+- **doc-formats/**: 상세 인터페이스 (필수/선택 섹션, 메타데이터 규칙 정의)
+- **skills/templates/**: 실행용 간소 양식 (Claude가 즉시 사용할 수 있는 구조)
+
+Skills가 문서를 생성할 때 이 doc-formats/의 규칙을 준수해야 합니다.
 
 프로젝트가 양식을 커스텀할 때:
 - **필수 섹션**: 반드시 포함 (삭제 불가)
