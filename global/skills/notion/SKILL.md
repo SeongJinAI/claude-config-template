@@ -9,10 +9,11 @@ Notion 업무 페이지의 체크리스트 항목을 관리합니다.
 ## 사용법
 
 ```bash
-/notion add <메뉴> "<항목>"           # 체크리스트 항목 추가
-/notion done "<키워드>"               # 키워드로 항목 찾아 체크 처리
-/notion list <메뉴>                   # 특정 메뉴 하위 항목 조회
-/notion list                          # 전체 메뉴 목록 조회
+/notion add <메뉴> "<항목>"                          # 체크리스트 항목 추가
+/notion add <메뉴> "<항목>" --detail "<상세내용>"     # 상세 내용 포함 추가
+/notion done "<키워드>"                               # 키워드로 항목 찾아 체크 처리
+/notion list <메뉴>                                   # 특정 메뉴 하위 항목 조회
+/notion list                                          # 전체 메뉴 목록 조회
 ```
 
 ## 수행 작업
@@ -21,38 +22,95 @@ Notion 업무 페이지의 체크리스트 항목을 관리합니다.
 
 1. 메뉴명으로 대상 toggle block ID 결정
 2. Notion API로 to_do 블록 추가
-3. 항목 형식: `구분(API/DB/확인) > [기능명] > 작업유형(신규/수정/개선/제거) > 설명`
+3. 항목 형식은 프로젝트별 정의 (예: `구분 > [기능명] > 작업유형 > 설명`)
+
+### add --detail — 상세 내용 포함 추가
+
+to_do 블록 생성 후, **하위에 toggle 블록("기록") → 그 안에 paragraph 블록**으로 상세 내용을 구조화합니다.
+
+**블록 구조**:
+```
+to_do ("항목 텍스트")
+  └── toggle ("기록")
+        ├── paragraph ([심각도] ...)
+        ├── paragraph ([현상] ...)
+        ├── paragraph ([원인] ...)
+        ├── paragraph ([수정 내용] ...)
+        └── paragraph ([수정 파일] ...)
+```
+
+**API 호출 순서** (3단계 — Notion API는 2단계까지만 중첩 가능):
+1. `PATCH /blocks/{MENU_TOGGLE_ID}/children` — to_do 블록 생성 → **to_do block ID** 획득
+2. `PATCH /blocks/{TODO_BLOCK_ID}/children` — toggle 블록("기록") 생성 → **toggle block ID** 획득
+3. `PATCH /blocks/{TOGGLE_BLOCK_ID}/children` — paragraph 블록들(상세 내용) 일괄 생성
+
+**IMPORTANT**: to_do 하위에 직접 paragraph를 넣지 않습니다. 반드시 toggle("기록")을 중간에 두어 접기/펼치기가 가능하게 합니다.
+
+**상세 내용 필드** (각각 paragraph 블록):
+
+| 필드 | 형식 | 필수 |
+|------|------|------|
+| 심각도 | `[심각도]` bold + 등급 텍스트 | O |
+| 현상 | `[현상]` bold + 설명 | O |
+| 원인 | `[원인]` bold + 설명 | 선택 |
+| 수정 내용 | `[수정 내용]` bold + 번호 목록 | O |
+| 수정 파일 | `[수정 파일]` bold + 파일명 나열 | O |
+
+#### 심각도별 스타일
+
+| 심각도 | to_do 텍스트 | paragraph 색상 |
+|--------|-------------|---------------|
+| CRITICAL (운영 버그) | 접두사 bold+red, 전체 텍스트 red | `"color": "red"` |
+| HIGH | 기본 | `"color": "orange"` |
+| MEDIUM / LOW | 기본 | 기본 |
+
+**CRITICAL 항목 to_do rich_text 예시**:
+```json
+[
+  {"type": "text", "text": {"content": "[운영버그] "}, "annotations": {"bold": true, "color": "red"}},
+  {"type": "text", "text": {"content": "항목 텍스트"}, "annotations": {"color": "red"}}
+]
+```
 
 ### done — 항목 체크 처리
 
 1. 키워드로 대상 메뉴 하위 to_do 블록 검색
 2. 매칭되는 항목을 `checked: true`로 업데이트
+3. 여러 개 매칭 시 목록을 보여주고 사용자에게 선택 요청
 
 ### list — 항목 조회
 
 1. 메뉴 지정 시: 해당 toggle 하위 to_do 항목 목록 출력
 2. 메뉴 미지정 시: 전체 메뉴(toggle) 목록 출력
+3. 출력 형식: `[x]`/`[ ]` + 항목 텍스트
 
 ## 프로젝트별 설정
 
-이 스킬은 인터페이스입니다. 프로젝트별로 다음을 정의해야 합니다:
+이 스킬은 인터페이스입니다. 프로젝트 `.claude/skills/notion.md`에서 오버라이딩하여 다음을 정의합니다:
 
 - **Notion 토큰 위치**: `.claude/.mcp.json` 등
 - **페이지 ID**: 대상 Notion 페이지
 - **메뉴 → Block ID 매핑**: 프로젝트 메뉴 구조에 맞는 매핑 테이블
+- **항목 형식**: 프로젝트별 체크리스트 작성 규칙
+- **메뉴명 매칭 규칙**: 부분 일치, 하위 메뉴 직접 지정 등
 
 ## 출력 형식
 
 ```
-[add] 급여관리 > 급여 계산
-  + API > [급여 계산] > 개선 > 통상시급 산출식 변경
+[add] <메뉴>
+  + <항목 텍스트>
 
-[done] 급여관리 > 급여 계산
-  [x] API > [급여 계산] > 개선 > 통상시급 산출식 변경
+[add+detail] <메뉴>
+  + <항목 텍스트>
+    └── 기록 (toggle)
 
-[list] 급여관리 > 급여 계산
-  [x] API > [근로자 현장별 목록 조회] > 수정 > 검색 필터 제거
-  [ ] API > [변경 이력 조회] > 신규 > (비공식)
+[done] <메뉴>
+  [x] <항목 텍스트>
+
+[list] <메뉴>
+  [x] 완료된 항목
+  [ ] 미완료 항목
 ```
 
 **IMPORTANT**: Notion 업데이트 실패 시 에러를 출력하고, 코드 작업은 중단하지 않습니다.
+**IMPORTANT**: 토큰은 런타임에 설정 파일에서 읽어야 합니다. 하드코딩 금지.
