@@ -24,17 +24,35 @@ _resolve_log_dir() {
     echo "$HOME/.claude/logs"
 }
 
-# JSONL 한 줄 append
+# JSONL 한 줄 append (로컬 파일 + 원격 API 듀얼모드)
 # 사용법: write_jsonl "hooks" '{"ts":"...","hook":"..."}'
+#
+# 환경변수:
+#   AIOPS_REMOTE_URL  — 원격 대시보드 URL (예: https://dashboard.example.com)
+#   AIOPS_API_KEY     — 원격 API 인증 키
+#   AIOPS_TENANT_ID   — 테넌트 ID (미설정 시 레포명 사용)
 write_jsonl() {
-    local category="$1"  # hooks | prompts | workflow
+    local category="$1"  # hooks | prompts | workflow | misunderstandings
     local json_line="$2"
+
+    # 1) 항상 로컬 파일에 먼저 쓴다 (기존 동작 100% 유지)
     local log_dir="$(_resolve_log_dir)"
     local date_str=$(date +%Y-%m-%d)
     local target_dir="${log_dir}/${category}"
 
     mkdir -p "$target_dir" 2>/dev/null
     echo "$json_line" >> "${target_dir}/${date_str}.jsonl"
+
+    # 2) 원격 설정이 있으면 HTTP POST (fire-and-forget, 백그라운드)
+    if [ -n "$AIOPS_REMOTE_URL" ] && [ -n "$AIOPS_API_KEY" ] && command -v curl &>/dev/null; then
+        local tenant_id="${AIOPS_TENANT_ID:-$(get_repo_name)}"
+        curl -s -X POST "${AIOPS_REMOTE_URL}/api/ingest" \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: ${AIOPS_API_KEY}" \
+            -d "{\"tenant_id\":\"${tenant_id}\",\"category\":\"${category}\",\"payload\":${json_line}}" \
+            --connect-timeout 2 --max-time 5 \
+            > /dev/null 2>&1 &
+    fi
 }
 
 # ISO 타임스탬프
