@@ -16,20 +16,26 @@ description: 구현 완료 후 7종 문서를 지식 레포에 일괄 생성/업
 
 ## 저장 위치
 
-문서는 `CLAUDE_KNOWLEDGE_REPO` 환경변수 (또는 `~/.claude/.env`)에 지정된 지식 레포에 저장합니다.
+문서 저장 위치 (우선순위):
+
+1. `CLAUDE_KNOWLEDGE_REPO` 환경변수가 설정된 경우 → 지식 레포에 저장
+2. 프로젝트에 `src/docs/` 디렉토리가 있는 경우 → 프로젝트 내 저장
+3. 둘 다 없으면 → 프로젝트 루트 `docs/`에 저장
 
 ```
-{CLAUDE_KNOWLEDGE_REPO}/
-├── specs/{프로젝트명}-{기능명}-기능명세서.md
-├── architecture/{프로젝트명}-{기능명}-아키텍처.md
-├── architecture/{프로젝트명}-{기능명}-아키텍처-특이사항.md
-├── manuals/{프로젝트명}-{기능명}-사용자매뉴얼.md
-├── errors/{프로젝트명}-{기능명}-에러메시지.md
-├── troubleshooting/{프로젝트명}-{기능명}-트러블슈팅.md
-└── insights/{프로젝트명}-{기능명}-인사이트.md
-```
+# CLAUDE_KNOWLEDGE_REPO 설정 시
+{CLAUDE_KNOWLEDGE_REPO}/specs/{프로젝트명}-{기능명}-기능명세서.md
+...
 
-프로젝트명은 현재 git 루트의 디렉토리명을 사용합니다.
+# 프로젝트 내 저장 시 (폴백) — 프로젝트 문서 구조에 맞춤
+{PROJECT_ROOT}/src/docs/specs/{기능명}_기능명세서.md
+{PROJECT_ROOT}/src/docs/architecture/{기능명}_아키텍처_설명서.md
+{PROJECT_ROOT}/src/docs/user-guide/{기능명}_사용자매뉴얼.md
+{PROJECT_ROOT}/src/docs/ERROR_MESSAGES.md (기존 파일에 추가)
+{PROJECT_ROOT}/src/docs/issues/ISSUE_{NNN}_{이슈명}.md
+{PROJECT_ROOT}/src/docs/insights/{접두사}_{주제}.md
+{PROJECT_ROOT}/src/docs/architecture/프로젝트_아키텍처_특이사항.md (기존 파일에 추가)
+```
 
 ## 수행 작업
 
@@ -85,4 +91,4 @@ description: 구현 완료 후 7종 문서를 지식 레포에 일괄 생성/업
 | `--update-only` | 기존 문서 업데이트만 (신규 생성 안 함) |
 | `--dry-run` | 파일 생성 없이 미리보기 |
 
-**IMPORTANT**: CLAUDE_KNOWLEDGE_REPO가 설정되지 않으면 사용자에게 안내 후 중단합니다. /feature-docs-plan으로 초안을 먼저 만들었다면 해당 문서를 업데이트합니다.
+**IMPORTANT**: CLAUDE_KNOWLEDGE_REPO가 설정되지 않으면 프로젝트 내 docs 디렉토리에 저장합니다 (src/docs/ > docs/ 순으로 탐색). 프로젝트 내 저장 시 파일명은 프로젝트의 기존 네이밍 컨벤션을 따릅니다. /feature-docs-plan으로 초안을 먼저 만들었다면 해당 문서를 업데이트합니다.

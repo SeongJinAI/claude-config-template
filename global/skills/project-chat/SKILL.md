@@ -17,10 +17,11 @@ description: 프로젝트 문서 기반 Q&A
 
 ## 검색 대상
 
-1. **지식 레포** (`CLAUDE_KNOWLEDGE_REPO` 또는 `~/.claude/.env`에서 읽음)
+1. **프로젝트 내 문서** (항상 검색)
+   - `src/docs/` 또는 `docs/` 디렉토리
+   - specs/, architecture/, user-guide/, issues/, insights/ 등
+2. **지식 레포** (`CLAUDE_KNOWLEDGE_REPO` 설정 시 추가 검색)
    - specs/, architecture/, manuals/, errors/, troubleshooting/, insights/
-2. **프로젝트 내 docs/**
-   - 프로젝트 로컬 문서 (있는 경우)
 
 현재 프로젝트명으로 필터링하여 관련 문서를 우선 검색합니다.
 

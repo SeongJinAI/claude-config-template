@@ -68,5 +68,9 @@
       }
     ]
   },
-  "language": "Korean"
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true
+  },
+  "language": "Korean",
+  "effortLevel": "high"
 }

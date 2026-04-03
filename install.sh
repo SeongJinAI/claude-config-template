@@ -19,6 +19,7 @@ LINK_TARGETS=(
     "skills"
     "rules"
     "hooks"
+    "agents"
 )
 
 # ─── 심볼릭 링크 모드 (로컬 개발용) ───
@@ -142,8 +143,19 @@ ENVEOF
     fi
 
     echo ""
-    echo "프로젝트 템플릿 적용은 별도로 실행:"
-    echo "  ./scripts/init-project.sh spring-boot|fastapi|nextjs"
+
+    # ─── 외부 스킬 설치 ───
+    read -rp "외부 스킬(find-skills, karpathy-guidelines)을 설치하시겠습니까? (y/N): " INSTALL_PLUGINS
+    if [ "$INSTALL_PLUGINS" = "y" ] || [ "$INSTALL_PLUGINS" = "Y" ]; then
+        if [ -f "$DOTFILES_DIR/scripts/install-plugins.sh" ]; then
+            bash "$DOTFILES_DIR/scripts/install-plugins.sh" --global
+        else
+            echo "  경고: scripts/install-plugins.sh를 찾을 수 없습니다."
+        fi
+    fi
+
+    echo ""
+    echo "설치 완료!"
 
     exit 0
 fi
@@ -174,7 +186,7 @@ curl -fsSL "$REPO_URL/global/CLAUDE.md" -o "$CLAUDE_DIR/CLAUDE.md" 2>/dev/null |
 
 # skills
 echo "skills/ 다운로드..."
-SKILLS=(clear feedback-to-pr notion project-chat feature-docs-plan feature-docs-complete)
+SKILLS=(clear feedback-to-pr notion project-chat feature-docs-plan feature-docs-complete guideline-audit)
 for skill in "${SKILLS[@]}"; do
     mkdir -p "$CLAUDE_DIR/skills/$skill"
     curl -fsSL "$REPO_URL/global/skills/${skill}/SKILL.md" -o "$CLAUDE_DIR/skills/${skill}/SKILL.md" 2>/dev/null || true
@@ -212,6 +224,13 @@ for f in log-utils write-checkpoint; do
     curl -fsSL "$REPO_URL/global/hooks/lib/${f}.sh" -o "$CLAUDE_DIR/hooks/lib/${f}.sh" 2>/dev/null || true
 done
 chmod +x "$CLAUDE_DIR/hooks/"*.sh "$CLAUDE_DIR/hooks/lib/"*.sh 2>/dev/null || true
+
+# agents
+echo "agents/ 다운로드..."
+mkdir -p "$CLAUDE_DIR/agents"
+for f in api-code-review-orchestrator; do
+    curl -fsSL "$REPO_URL/global/agents/${f}.md" -o "$CLAUDE_DIR/agents/${f}.md" 2>/dev/null || true
+done
 
 echo ""
 echo "파일 설치 완료. 환경변수를 설정합니다."
@@ -259,15 +278,29 @@ if [ -n "$KNOWLEDGE_REPO" ] && [ ! -d "$KNOWLEDGE_REPO" ]; then
 fi
 
 echo ""
+echo "파일 설치 완료!"
+echo ""
+
+# ─── 외부 스킬 설치 ───
+read -rp "외부 스킬(find-skills, karpathy-guidelines)을 설치하시겠습니까? (y/N): " INSTALL_PLUGINS
+if [ "$INSTALL_PLUGINS" = "y" ] || [ "$INSTALL_PLUGINS" = "Y" ]; then
+    echo "외부 스킬 설치 중..."
+    if command -v npx &> /dev/null; then
+        npx skills add https://github.com/vercel-labs/skills --skill find-skills -g -y 2>/dev/null || echo "  경고: find-skills 설치 실패"
+        npx skills add https://github.com/forrestchang/andrej-karpathy-skills --skill karpathy-guidelines -g -y 2>/dev/null || echo "  경고: karpathy-guidelines 설치 실패"
+    else
+        echo "  경고: npx를 찾을 수 없습니다. 외부 스킬은 수동 설치 필요"
+    fi
+fi
+
+echo ""
 echo "설치 완료!"
 echo ""
 echo "설치된 항목:"
 echo "  ~/.claude/settings.json"
 echo "  ~/.claude/CLAUDE.md"
-echo "  ~/.claude/skills/ (${#SKILLS[@]}개)"
+echo "  ~/.claude/agents/ (에이전트)"
+echo "  ~/.claude/skills/ (${#SKILLS[@]}개 스킬)"
 echo "  ~/.claude/rules/ (3개)"
 echo "  ~/.claude/hooks/ (8개 + lib 2개)"
 echo "  ~/.claude/.env (환경변수)"
-echo ""
-echo "프로젝트 템플릿 적용:"
-echo "  curl -fsSL $REPO_URL/scripts/init-project.sh | bash -s spring-boot"

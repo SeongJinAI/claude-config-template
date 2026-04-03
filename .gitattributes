@@ -1,0 +1,4 @@
+# 모든 sh 파일은 LF 강제 (WSL/Linux 호환)
+*.sh text eol=lf
+*.json text eol=lf
+*.md text eol=auto
