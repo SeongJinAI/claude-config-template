@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Claude Code UserPromptSubmit Hook
-# /clear 또는 /compact 명령 감지 시 HANDOFF.md 작성을 Claude에게 지시합니다.
+# /clear 또는 /compact 명령 감지 시 HANDOFF 작성을 Claude에게 지시합니다.
+# 멀티 세션(handoff/ 디렉토리) 및 레거시(HANDOFF.md) 모두 지원
 #
 # 이벤트: UserPromptSubmit
 # 트리거: 사용자 프롬프트 제출 시
@@ -45,8 +46,7 @@ if echo "$PROMPT" | grep -qE "^/(clear|compact)"; then
 
     # 프로젝트 루트 찾기
     PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$CWD")
-    HANDOFF_FILENAME="${CLAUDE_HANDOFF_FILE:-HANDOFF.md}"
-    HANDOFF_PATH="$PROJECT_ROOT/$HANDOFF_FILENAME"
+    HANDOFF_THRESHOLD="${CLAUDE_HANDOFF_THRESHOLD:-600}"
 
     # 명령어 종류 확인
     if echo "$PROMPT" | grep -qE "^/compact"; then
@@ -55,45 +55,76 @@ if echo "$PROMPT" | grep -qE "^/(clear|compact)"; then
         COMMAND_TYPE="clear"
     fi
 
-    # HANDOFF.md 상태 확인
-    NEEDS_UPDATE="false"
-    if [ -f "$HANDOFF_PATH" ]; then
-        LAST_MODIFIED=$(stat -c %Y "$HANDOFF_PATH" 2>/dev/null || stat -f %m "$HANDOFF_PATH" 2>/dev/null || echo 0)
-        CURRENT_TIME=$(date +%s)
-        DIFF=$((CURRENT_TIME - LAST_MODIFIED))
+    # handoff 디렉토리 vs 레거시 HANDOFF.md 분기
+    HANDOFF_DIR="$PROJECT_ROOT/handoff"
+    HANDOFF_FILENAME="${CLAUDE_HANDOFF_FILE:-HANDOFF.md}"
+    HANDOFF_PATH="$PROJECT_ROOT/$HANDOFF_FILENAME"
 
-        # 타임아웃 초과 시 업데이트 필요 (기본 600초 = 10분)
-        HANDOFF_THRESHOLD="${CLAUDE_HANDOFF_THRESHOLD:-600}"
+    NEEDS_UPDATE="false"
+
+    if [ -d "$HANDOFF_DIR" ]; then
+        # 멀티 세션 모드: handoff/ 디렉토리 내 최신 mtime 체크
+        LATEST_MTIME=0
+        for f in "$HANDOFF_DIR"/*.md; do
+            [ -f "$f" ] || continue
+            FMTIME=$(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f" 2>/dev/null || echo 0)
+            [ "$FMTIME" -gt "$LATEST_MTIME" ] && LATEST_MTIME=$FMTIME
+        done
+
+        CURRENT_TIME=$(date +%s)
+        DIFF=$((CURRENT_TIME - LATEST_MTIME))
+
         if [ "$DIFF" -ge "$HANDOFF_THRESHOLD" ]; then
             NEEDS_UPDATE="true"
             MINUTES=$((DIFF / 60))
         fi
-    else
-        NEEDS_UPDATE="true"
-        MINUTES="N/A"
-    fi
 
-    # stdout으로 출력 → Claude 컨텍스트에 주입됨
-    if [ "$NEEDS_UPDATE" = "true" ]; then
-        echo ""
-        echo "<user-prompt-submit-hook>"
-        echo "HANDOFF_UPDATE_REQUIRED: true"
-        echo "COMMAND: /$COMMAND_TYPE"
-        echo "HANDOFF_PATH: $HANDOFF_PATH"
-        if [ -f "$HANDOFF_PATH" ]; then
+        if [ "$NEEDS_UPDATE" = "true" ]; then
+            echo ""
+            echo "<user-prompt-submit-hook>"
+            echo "HANDOFF_UPDATE_REQUIRED: true"
+            echo "COMMAND: /$COMMAND_TYPE"
+            echo "HANDOFF_DIR: $HANDOFF_DIR"
             echo "LAST_MODIFIED: ${MINUTES}분 전"
-        else
-            echo "LAST_MODIFIED: 파일 없음"
+            echo ""
+            echo "지시사항: /$COMMAND_TYPE 명령 실행 전에 해당 세션의 handoff 파일을 업데이트하세요."
+            echo "세션 목록: handoff/INDEX.md 참조"
+            echo "포함할 내용:"
+            echo "  - 완료된 작업"
+            echo "  - 다음 작업 (남은 할일)"
+            echo "  - 주의사항"
+            echo "  - 관련 파일 경로"
+            echo "</user-prompt-submit-hook>"
+            echo ""
         fi
-        echo ""
-        echo "지시사항: /$COMMAND_TYPE 명령 실행 전에 HANDOFF.md를 업데이트하세요."
-        echo "포함할 내용:"
-        echo "  - 완료된 작업"
-        echo "  - 다음 작업 (남은 할일)"
-        echo "  - 주의사항"
-        echo "  - 관련 파일 경로"
-        echo "</user-prompt-submit-hook>"
-        echo ""
+    elif [ -f "$HANDOFF_PATH" ]; then
+        # 레거시 모드: 단일 HANDOFF.md
+        LAST_MODIFIED=$(stat -c %Y "$HANDOFF_PATH" 2>/dev/null || stat -f %m "$HANDOFF_PATH" 2>/dev/null || echo 0)
+        CURRENT_TIME=$(date +%s)
+        DIFF=$((CURRENT_TIME - LAST_MODIFIED))
+
+        if [ "$DIFF" -ge "$HANDOFF_THRESHOLD" ]; then
+            NEEDS_UPDATE="true"
+            MINUTES=$((DIFF / 60))
+        fi
+
+        if [ "$NEEDS_UPDATE" = "true" ]; then
+            echo ""
+            echo "<user-prompt-submit-hook>"
+            echo "HANDOFF_UPDATE_REQUIRED: true"
+            echo "COMMAND: /$COMMAND_TYPE"
+            echo "HANDOFF_PATH: $HANDOFF_PATH"
+            echo "LAST_MODIFIED: ${MINUTES}분 전"
+            echo ""
+            echo "지시사항: /$COMMAND_TYPE 명령 실행 전에 $HANDOFF_FILENAME 를 업데이트하세요."
+            echo "포함할 내용:"
+            echo "  - 완료된 작업"
+            echo "  - 다음 작업 (남은 할일)"
+            echo "  - 주의사항"
+            echo "  - 관련 파일 경로"
+            echo "</user-prompt-submit-hook>"
+            echo ""
+        fi
     fi
 fi
 

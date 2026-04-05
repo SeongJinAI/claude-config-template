@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Claude Code PreCompact Hook
-# compact 실행 전 HANDOFF.md 작성을 알립니다.
+# compact 실행 전 HANDOFF 작성을 알립니다.
+# 멀티 세션(handoff/ 디렉토리) 및 레거시(HANDOFF.md) 모두 지원
 #
 # 이벤트: PreCompact
 # 트리거: 수동(/compact) 또는 자동 compact 발생 전
@@ -53,22 +54,53 @@ echo "" >&2
 # 작업 디렉토리로 이동
 cd "$CWD" 2>/dev/null || cd ~
 
-# HANDOFF.md 존재 여부 및 최근 수정 여부 확인
+# HANDOFF 존재 여부 및 최근 수정 여부 확인
 check_handoff() {
     # 프로젝트 루트 찾기 (git root 또는 현재 디렉토리)
     PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$CWD")
-
-    HANDOFF_FILENAME="${CLAUDE_HANDOFF_FILE:-HANDOFF.md}"
-    HANDOFF_PATH="$PROJECT_ROOT/$HANDOFF_FILENAME"
     HANDOFF_THRESHOLD="${CLAUDE_HANDOFF_THRESHOLD:-600}"
 
-    if [ -f "$HANDOFF_PATH" ]; then
-        # 마지막 수정 시간 확인
+    HANDOFF_DIR="$PROJECT_ROOT/handoff"
+    HANDOFF_FILENAME="${CLAUDE_HANDOFF_FILE:-HANDOFF.md}"
+    HANDOFF_PATH="$PROJECT_ROOT/$HANDOFF_FILENAME"
+
+    if [ -d "$HANDOFF_DIR" ]; then
+        # 멀티 세션 모드
+        LATEST_MTIME=0
+        LATEST_FILE=""
+        for f in "$HANDOFF_DIR"/*.md; do
+            [ -f "$f" ] || continue
+            FMTIME=$(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f" 2>/dev/null || echo 0)
+            if [ "$FMTIME" -gt "$LATEST_MTIME" ]; then
+                LATEST_MTIME=$FMTIME
+                LATEST_FILE="$f"
+            fi
+        done
+
+        CURRENT_TIME=$(date +%s)
+        DIFF=$((CURRENT_TIME - LATEST_MTIME))
+
+        if [ "$DIFF" -lt "$HANDOFF_THRESHOLD" ]; then
+            echo "✅ Handoff 최근 업데이트됨 (${DIFF}초 전)" >&2
+            echo "   위치: $LATEST_FILE" >&2
+        else
+            MINUTES=$((DIFF / 60))
+            echo "⚠️  Handoff 세션 파일이 ${MINUTES}분 전에 수정되었습니다!" >&2
+            echo "" >&2
+            echo "💡 Compact 전에 해당 세션의 handoff 파일을 업데이트하세요:" >&2
+            echo "   - 완료된 작업" >&2
+            echo "   - 다음 작업 (남은 할일)" >&2
+            echo "   - 주의사항" >&2
+            echo "   - 관련 파일 경로" >&2
+            echo "" >&2
+            echo "   세션 목록: $HANDOFF_DIR/INDEX.md" >&2
+        fi
+    elif [ -f "$HANDOFF_PATH" ]; then
+        # 레거시 모드
         LAST_MODIFIED=$(stat -c %Y "$HANDOFF_PATH" 2>/dev/null || stat -f %m "$HANDOFF_PATH" 2>/dev/null || echo 0)
         CURRENT_TIME=$(date +%s)
         DIFF=$((CURRENT_TIME - LAST_MODIFIED))
 
-        # 타임아웃 이내에 수정되었는지 확인
         if [ "$DIFF" -lt "$HANDOFF_THRESHOLD" ]; then
             echo "✅ $HANDOFF_FILENAME 최근 업데이트됨 (${DIFF}초 전)" >&2
             echo "   위치: $HANDOFF_PATH" >&2
@@ -85,10 +117,10 @@ check_handoff() {
             echo "   위치: $HANDOFF_PATH" >&2
         fi
     else
-        echo "⚠️  $HANDOFF_FILENAME 이(가) 존재하지 않습니다!" >&2
+        echo "⚠️  HANDOFF 파일이 존재하지 않습니다!" >&2
         echo "" >&2
-        echo "💡 프로젝트 루트에 $HANDOFF_FILENAME 을(를) 생성하세요:" >&2
-        echo "   $HANDOFF_PATH" >&2
+        echo "💡 handoff/ 디렉토리 또는 $HANDOFF_FILENAME 을(를) 생성하세요:" >&2
+        echo "   $PROJECT_ROOT" >&2
     fi
 }
 

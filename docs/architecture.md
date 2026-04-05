@@ -224,6 +224,7 @@ claude-dotfiles/
 │   ├── settings.json                 # permissions + hooks + plugins
 │   ├── rules/                        # 글로벌 규칙 (3개)
 │   ├── skills/                       # 슬래시 명령 (7개)
+│   ├── agents/                       # 글로벌 에이전트 (3개)
 │   └── hooks/                        # Hook 스크립트 (8개 + lib)
 │
 ├── project-templates/                # 프레임워크별 초기화 템플릿
@@ -350,6 +351,49 @@ Claude Code에서 사용하는 플러그인은 **내장 플러그인**(settings.
 
 ### 새 Agent 추가
 
-1. `project-templates/[프레임워크]/agents/[에이전트명].md` 생성
+1. `global/agents/[에이전트명].md` 생성 (글로벌) 또는 `project-templates/[프레임워크]/agents/` (프레임워크별)
 2. frontmatter에 `name`, `description`, `model` 정의
 3. 프로젝트에서 `.claude/agents/[에이전트명].md`로 오버라이딩하여 프로젝트 특화 컨텍스트 추가
+
+---
+
+## Global Agents
+
+| 에이전트 | 범위 | 용도 |
+|---------|------|------|
+| `api-code-review-orchestrator.md` | 모든 프로젝트 | API 코드 리뷰 8단계 파이프라인 |
+| `hotfix-pipeline.md` | 모든 프로젝트 | Sentry 에러 감지 → 유형별(DB/코드/혼합) 자동 분기 → SQL 전달 또는 PR 생성 |
+| `blog-post-automation.md` | 크로스 프로젝트 | 인프라 자동화 에이전트 추가 시 GitHub 블로그에 한/영 포스팅 자동 생성 |
+
+---
+
+## Handoff 멀티 세션
+
+Claude Code Remote로 여러 세션을 동시에 운영할 때 세션 간 핸드오프 충돌을 방지합니다.
+
+### 구조
+
+```
+handoff/
+├── INDEX.md              ← 활성 세션 목록 + 라우팅 규칙
+├── main.md               ← 메인 기능 개발 세션
+├── hotfix.md             ← 핫픽스/이슈 처리 세션
+├── infra.md              ← 인프라/자동화 세션
+└── archive/
+    └── HANDOFF_legacy.md ← 마이그레이션 전 아카이브
+```
+
+### 세션 식별
+
+1. 사용자 명시 > 2. 브랜치 패턴(`hotfix/*`→hotfix, `infra/*`→infra) > 3. 기본값(`main`)
+
+### 규칙
+
+- 자기 세션 파일만 쓰기, 다른 세션 파일은 읽기만
+- `/clear` 시: 해당 세션 파일 업데이트 + INDEX.md 갱신
+- hooks(`on-prompt-handoff-remind.sh`, `on-compact-handoff-save.sh`)가 `handoff/` 디렉토리를 자동 인식 (레거시 `HANDOFF.md` fallback 지원)
+
+### 템플릿
+
+- `global/skills/clear/references/templates/handoff-index-template.md`
+- `global/skills/clear/references/templates/handoff-session-template.md`
