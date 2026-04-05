@@ -47,8 +47,9 @@ echo "📄 문서-코드 동기화 검사 시작..." >&2
 # 작업 디렉토리로 이동
 cd "$CWD" 2>/dev/null || exit 0
 
-# docs 디렉토리 존재 확인
-if [ ! -d "docs" ]; then
+# docs 디렉토리 존재 확인 (환경변수로 커스텀 경로 가능)
+DOCS_BASE="${CLAUDE_DOCS_DIR:-docs}"
+if [ ! -d "$DOCS_BASE" ]; then
     exit 0
 fi
 
@@ -90,12 +91,17 @@ if [ -n "$CODE_FILES" ] && [ -z "$DOC_FILES" ]; then
     # 관련될 수 있는 문서 찾기
     POTENTIAL_DOCS=""
     for file in $CODE_FILES; do
-        # 파일명에서 모듈명 추출 (예: OrderController.java -> order)
-        BASE_NAME=$(basename "$file" | sed 's/\.[^.]*$//' | sed 's/Controller$//' | sed 's/Service$//' | sed 's/Repository$//' | tr '[:upper:]' '[:lower:]')
+        # 파일명에서 모듈명 추출 (프레임워크별 접미사 제거)
+        # 환경변수로 커스텀 접미사 지정 가능: CLAUDE_MODULE_SUFFIXES="Controller,Service,Repository,Router,Handler"
+        MODULE_SUFFIXES="${CLAUDE_MODULE_SUFFIXES:-Controller,Service,Repository,Router,Handler,Resolver,UseCase}"
+        SED_PATTERN=$(echo "$MODULE_SUFFIXES" | tr ',' '\n' | sed 's/.*/s\/&$\/\//' | tr '\n' ';')
+        BASE_NAME=$(basename "$file" | sed 's/\.[^.]*$//' | sed "$SED_PATTERN" | tr '[:upper:]' '[:lower:]')
 
         # 관련 문서 검색
-        if [ -d "docs/specs" ]; then
-            FOUND_DOC=$(find docs/specs -name "*${BASE_NAME}*" -type f 2>/dev/null | head -1)
+        DOCS_DIR="${CLAUDE_DOCS_DIR:-docs}"
+        SPECS_DIR="${CLAUDE_SPECS_DIR:-$DOCS_DIR/specs}"
+        if [ -d "$SPECS_DIR" ]; then
+            FOUND_DOC=$(find "$SPECS_DIR" -name "*${BASE_NAME}*" -type f 2>/dev/null | head -1)
             if [ -n "$FOUND_DOC" ]; then
                 POTENTIAL_DOCS="$POTENTIAL_DOCS $FOUND_DOC"
             fi
@@ -120,8 +126,10 @@ fi
 # Controller/Router 변경 시 추가 경고
 ENDPOINT_CHANGES=false
 for file in $CODE_FILES; do
+    # 엔드포인트 파일 패턴 (환경변수로 커스텀 가능)
+    ENDPOINT_PATTERNS="${CLAUDE_ENDPOINT_PATTERNS:-Controller|Router|router|api/|routes/|views/}"
     case "$file" in
-        *Controller*|*Router*|*router*|*api/*)
+        *Controller*|*Router*|*router*|*api/*|*routes/*|*views/*)
             ENDPOINT_CHANGES=true
             break
             ;;

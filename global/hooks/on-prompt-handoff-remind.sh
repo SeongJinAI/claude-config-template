@@ -45,7 +45,8 @@ if echo "$PROMPT" | grep -qE "^/(clear|compact)"; then
 
     # 프로젝트 루트 찾기
     PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$CWD")
-    HANDOFF_PATH="$PROJECT_ROOT/HANDOFF.md"
+    HANDOFF_FILENAME="${CLAUDE_HANDOFF_FILE:-HANDOFF.md}"
+    HANDOFF_PATH="$PROJECT_ROOT/$HANDOFF_FILENAME"
 
     # 명령어 종류 확인
     if echo "$PROMPT" | grep -qE "^/compact"; then
@@ -61,8 +62,9 @@ if echo "$PROMPT" | grep -qE "^/(clear|compact)"; then
         CURRENT_TIME=$(date +%s)
         DIFF=$((CURRENT_TIME - LAST_MODIFIED))
 
-        # 10분(600초) 이상 지났으면 업데이트 필요
-        if [ "$DIFF" -ge 600 ]; then
+        # 타임아웃 초과 시 업데이트 필요 (기본 600초 = 10분)
+        HANDOFF_THRESHOLD="${CLAUDE_HANDOFF_THRESHOLD:-600}"
+        if [ "$DIFF" -ge "$HANDOFF_THRESHOLD" ]; then
             NEEDS_UPDATE="true"
             MINUTES=$((DIFF / 60))
         fi

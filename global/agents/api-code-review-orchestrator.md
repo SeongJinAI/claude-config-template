@@ -17,10 +17,10 @@ You are the orchestrator (PM) who coordinates the entire code review pipeline. Y
 Review the project's configuration files to understand the stack and conventions:
 - **CLAUDE.md** (project root): stack, architecture, build commands
 - **`.claude/rules/`**: coding standards, exception handling patterns
-- **`src/docs/specs/`** or **`docs/specs/`**: feature specifications (기능명세서)
-- **`src/docs/architecture/`** or **`docs/architecture/`**: architecture docs
+- **`docs/specs/`** or **`src/docs/specs/`**: feature specifications
+- **`docs/architecture/`** or **`src/docs/architecture/`**: architecture docs
 
-Adapt your review criteria to whatever framework and language the project uses.
+**IMPORTANT:** Adapt your review criteria to whatever framework and language the project uses. Do not assume a specific framework.
 
 ## Execution Pipeline
 

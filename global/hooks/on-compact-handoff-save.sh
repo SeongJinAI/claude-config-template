@@ -58,33 +58,37 @@ check_handoff() {
     # 프로젝트 루트 찾기 (git root 또는 현재 디렉토리)
     PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$CWD")
 
-    if [ -f "$PROJECT_ROOT/HANDOFF.md" ]; then
+    HANDOFF_FILENAME="${CLAUDE_HANDOFF_FILE:-HANDOFF.md}"
+    HANDOFF_PATH="$PROJECT_ROOT/$HANDOFF_FILENAME"
+    HANDOFF_THRESHOLD="${CLAUDE_HANDOFF_THRESHOLD:-600}"
+
+    if [ -f "$HANDOFF_PATH" ]; then
         # 마지막 수정 시간 확인
-        LAST_MODIFIED=$(stat -c %Y "$PROJECT_ROOT/HANDOFF.md" 2>/dev/null || stat -f %m "$PROJECT_ROOT/HANDOFF.md" 2>/dev/null || echo 0)
+        LAST_MODIFIED=$(stat -c %Y "$HANDOFF_PATH" 2>/dev/null || stat -f %m "$HANDOFF_PATH" 2>/dev/null || echo 0)
         CURRENT_TIME=$(date +%s)
         DIFF=$((CURRENT_TIME - LAST_MODIFIED))
 
-        # 10분(600초) 이내에 수정되었는지 확인
-        if [ "$DIFF" -lt 600 ]; then
-            echo "✅ HANDOFF.md 최근 업데이트됨 (${DIFF}초 전)" >&2
-            echo "   위치: $PROJECT_ROOT/HANDOFF.md" >&2
+        # 타임아웃 이내에 수정되었는지 확인
+        if [ "$DIFF" -lt "$HANDOFF_THRESHOLD" ]; then
+            echo "✅ $HANDOFF_FILENAME 최근 업데이트됨 (${DIFF}초 전)" >&2
+            echo "   위치: $HANDOFF_PATH" >&2
         else
             MINUTES=$((DIFF / 60))
-            echo "⚠️  HANDOFF.md가 ${MINUTES}분 전에 수정되었습니다!" >&2
+            echo "⚠️  $HANDOFF_FILENAME 이(가) ${MINUTES}분 전에 수정되었습니다!" >&2
             echo "" >&2
-            echo "💡 Compact 전에 다음 내용을 HANDOFF.md에 업데이트하세요:" >&2
+            echo "💡 Compact 전에 다음 내용을 $HANDOFF_FILENAME 에 업데이트하세요:" >&2
             echo "   - 완료된 작업" >&2
             echo "   - 다음 작업 (남은 할일)" >&2
             echo "   - 주의사항" >&2
             echo "   - 관련 파일 경로" >&2
             echo "" >&2
-            echo "   위치: $PROJECT_ROOT/HANDOFF.md" >&2
+            echo "   위치: $HANDOFF_PATH" >&2
         fi
     else
-        echo "⚠️  HANDOFF.md가 존재하지 않습니다!" >&2
+        echo "⚠️  $HANDOFF_FILENAME 이(가) 존재하지 않습니다!" >&2
         echo "" >&2
-        echo "💡 프로젝트 루트에 HANDOFF.md를 생성하세요:" >&2
-        echo "   $PROJECT_ROOT/HANDOFF.md" >&2
+        echo "💡 프로젝트 루트에 $HANDOFF_FILENAME 을(를) 생성하세요:" >&2
+        echo "   $HANDOFF_PATH" >&2
     fi
 }
 

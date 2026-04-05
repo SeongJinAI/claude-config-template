@@ -63,7 +63,9 @@ if [ "$PERMISSION_MODE" != "plan" ]; then
 fi
 
 # ─── 가드 조건 3: 키워드 매칭 (복합 조건으로 오탐 방지) ───
-KEYWORD_PATTERN="신규.*개발|신규.*구현|API.*개발|기능.*개발|기능개발|스토리보드|착수|개발.*시작|implement|develop.*new|new.*feature"
+# 환경변수로 커스텀 키워드 패턴 추가 가능
+DEFAULT_KEYWORDS="신규.*개발|신규.*구현|API.*개발|기능.*개발|기능개발|스토리보드|착수|개발.*시작|implement|develop.*new|new.*feature|create.*api|build.*feature"
+KEYWORD_PATTERN="${CLAUDE_DEV_GUIDE_KEYWORDS:-$DEFAULT_KEYWORDS}"
 
 if ! echo "$PROMPT" | grep -qiE "$KEYWORD_PATTERN"; then
     exit 0
@@ -104,9 +106,17 @@ _resolve_knowledge_repo() {
 KNOWLEDGE_REPO=$(_resolve_knowledge_repo)
 
 # ─── 기획문서 탐색 (프로젝트별 위치 자동 감지) ───
+# 환경변수로 추가 탐색 경로 지정 가능 (콜론 구분)
 STORYBOARD_DIR=""
 PDF_LIST=""
-for candidate in "$PROJECT_ROOT/src/docs/기획문서" "$PROJECT_ROOT/docs/기획문서" "$PROJECT_ROOT/docs/storyboard"; do
+EXTRA_DIRS="${CLAUDE_STORYBOARD_DIRS:-}"
+CANDIDATES=("$PROJECT_ROOT/docs/storyboard" "$PROJECT_ROOT/docs/planning" "$PROJECT_ROOT/src/docs/storyboard")
+# 환경변수 경로 추가
+if [ -n "$EXTRA_DIRS" ]; then
+    IFS=':' read -ra EXTRA <<< "$EXTRA_DIRS"
+    CANDIDATES=("${EXTRA[@]}" "${CANDIDATES[@]}")
+fi
+for candidate in "${CANDIDATES[@]}"; do
     if [ -d "$candidate" ]; then
         STORYBOARD_DIR="$candidate"
         break
@@ -157,7 +167,8 @@ echo ""
 
 # 워크플로우 체크포인트 자동 기록
 REPO=$(get_repo_name "$CWD")
-"${SCRIPT_DIR}/lib/write-checkpoint.sh" "기능 개발 파이프라인" "기획문서 분석" 1 5 2>/dev/null
+WORKFLOW_NAME="${CLAUDE_DEV_WORKFLOW_NAME:-Feature Development Pipeline}"
+"${SCRIPT_DIR}/lib/write-checkpoint.sh" "$WORKFLOW_NAME" "Planning Document Analysis" 1 5 2>/dev/null
 
 # JSONL 로그 기록
 log_hook_execution "on-prompt-api-dev-guide.sh" "UserPromptSubmit" 0 "$HOOK_START_MS" "$REPO"
