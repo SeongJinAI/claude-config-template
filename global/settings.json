@@ -26,11 +26,11 @@
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/on-commit-doc-sync-check.sh"
+            "command": "~/.claude/hooks/on-commit-docs-sync-check.sh"
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/on-push-signature-check.sh"
+            "command": "~/.claude/hooks/on-push-security-signature-check.sh"
           }
         ]
       }
@@ -40,15 +40,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/on-prompt-log.sh"
+            "command": "~/.claude/hooks/on-prompt-ops-log.sh"
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/on-prompt-handoff-remind.sh"
+            "command": "~/.claude/hooks/on-prompt-workflow-handoff-remind.sh"
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/on-prompt-api-dev-guide.sh"
+            "command": "~/.claude/hooks/on-prompt-guide-api-dev.sh"
           },
           {
             "type": "command",
@@ -62,7 +62,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/on-compact-handoff-save.sh"
+            "command": "~/.claude/hooks/on-compact-workflow-handoff-save.sh"
           }
         ]
       }

@@ -280,14 +280,31 @@ cp hooks/*.sh ~/.claude/hooks/ && chmod +x ~/.claude/hooks/*.sh
 
 ### 훅 목록
 
-| 훅 | 이벤트 | 트리거 | 기능 |
-|----|--------|--------|------|
-| `on-commit-quality-check.sh` | PreToolUse(Bash) | `git commit` | 주석, unused 코드, 컨벤션 검사 |
-| `on-commit-doc-sync-check.sh` | PreToolUse(Bash) | `git commit` | 코드 변경 시 문서 업데이트 경고 |
-| `on-push-signature-check.sh` | PreToolUse(Bash) | `git push` | Claude 서명 감지, 보호 브랜치 경고 |
-| `on-compact-handoff-save.sh` | PreCompact | compact | HANDOFF.md 업데이트 알림 |
-| `on-prompt-handoff-remind.sh` | UserPromptSubmit | `/clear`·`/compact` | HANDOFF.md 업데이트 리마인더 |
-| `on-prompt-api-dev-guide.sh` | UserPromptSubmit | 신규 개발 키워드 | API 개발 워크플로 가이드 (플랜모드만) |
+| 훅 | 카테고리 | 이벤트 | 트리거 | 기능 |
+|----|---------|--------|--------|------|
+| `on-commit-quality-check.sh` | quality | PreToolUse(Bash) | `git commit` | 주석, unused 코드, 컨벤션 검사 |
+| `on-commit-docs-sync-check.sh` | docs | PreToolUse(Bash) | `git commit` | 코드 변경 시 문서 업데이트 경고 |
+| `on-push-security-signature-check.sh` | security | PreToolUse(Bash) | `git push` | Claude 서명 감지, 보호 브랜치 경고 |
+| `on-compact-workflow-handoff-save.sh` | workflow | PreCompact | compact | Handoff 업데이트 알림 (멀티 세션 지원) |
+| `on-prompt-workflow-handoff-remind.sh` | workflow | UserPromptSubmit | `/clear`·`/compact` | Handoff 업데이트 리마인더 (멀티 세션 지원) |
+| `on-prompt-guide-api-dev.sh` | guide | UserPromptSubmit | 신규 개발 키워드 | API 개발 워크플로 가이드 (플랜모드만) |
+| `on-prompt-ops-log.sh` | ops | UserPromptSubmit | 매 프롬프트 | JSONL 로그 기록 |
+| `on-prompt-test-feedback.sh` | test | UserPromptSubmit | 테스트 관련 | 테스트 피드백 주입 |
+| `on-prompt-quality-misunderstanding-detect.sh` | quality | UserPromptSubmit | 매 프롬프트 | AI 오해 감지 |
+
+### 네이밍 컨벤션
+
+`on-{이벤트}-{카테고리}-{목적}.sh`
+
+| 카테고리 | 용도 |
+|---------|------|
+| `quality-` | 코드 품질, 컨벤션 검사 |
+| `docs-` | 문서 동기화, 업데이트 |
+| `security-` | 서명, 보안 체크 |
+| `workflow-` | 핸드오프, 워크플로 관리 |
+| `guide-` | 개발 가이드 주입 |
+| `ops-` | 운영 로깅 |
+| `test-` | 테스트 피드백 |
 
 > Hooks는 **Project settings**에서 등록합니다 (`.claude/settings.json`).
 > 스크립트 파일은 `~/.claude/hooks/` 심볼릭 링크를 통해 이 레포에서 중앙 관리합니다.
