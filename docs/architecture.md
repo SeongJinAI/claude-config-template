@@ -223,9 +223,15 @@ claude-dotfiles/
 │   ├── CLAUDE.md                     # 전역 지침
 │   ├── settings.json                 # permissions + hooks + plugins
 │   ├── rules/                        # 글로벌 규칙 (3개)
-│   ├── skills/                       # 슬래시 명령 (7개)
-│   ├── agents/                       # 글로벌 에이전트 (3개)
-│   └── hooks/                        # Hook 스크립트 (8개 + lib)
+│   ├── agents/                       # 카테고리별 에이전트
+│   │   ├── common/                   #   모든 프로젝트 (quality-api-code-review)
+│   │   ├── server/                   #   서버 운영 (ops-hotfix-pipeline)
+│   │   └── blog/                     #   블로그 (content-blog-post)
+│   ├── skills/                       # 카테고리별 스킬
+│   │   ├── common/                   #   모든 프로젝트 (clear, notion, project-chat, guideline-audit)
+│   │   ├── server/                   #   서버 개발 (feature-docs-*, feedback-to-pr, misunderstanding-report)
+│   │   └── blog/                     #   블로그 (향후 추가)
+│   └── hooks/                        # Hook 스크립트 (9개 + lib)
 │
 ├── project-templates/                # 프레임워크별 초기화 템플릿
 │   ├── spring-boot/                  # CLAUDE.md + rules + skills + agents
