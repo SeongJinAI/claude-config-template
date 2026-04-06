@@ -382,11 +382,23 @@ Claude Code에서 사용하는 플러그인은 **내장 플러그인**(settings.
 
 ## Global Agents
 
-| 에이전트 | 범위 | 용도 |
-|---------|------|------|
-| `api-code-review-orchestrator.md` | 모든 프로젝트 | API 코드 리뷰 8단계 파이프라인 |
-| `hotfix-pipeline.md` | 모든 프로젝트 | Sentry 에러 감지 → 유형별(DB/코드/혼합) 자동 분기 → SQL 전달 또는 PR 생성 |
-| `blog-post-automation.md` | 크로스 프로젝트 | 인프라 자동화 에이전트 추가 시 GitHub 블로그에 한/영 포스팅 자동 생성 |
+| 에이전트 | 카테고리 | 구조 | 용도 |
+|---------|---------|------|------|
+| `quality-api-code-review.md` | common | 단일 파일 | API 코드 리뷰 파이프라인 |
+| `ops-hotfix-pipeline/` | server | **패키지** (AGENT.md + domains/) | Sentry 에러 감지 → 도메인 서브에이전트 분석 → 유형별 자동 분기 |
+| `content-blog-post.md` | blog | 단일 파일 | 인프라 자동화 에이전트 추가 시 블로그 포스팅 |
+
+### ops-hotfix-pipeline 패키지 구조
+
+```
+ops-hotfix-pipeline/
+├── AGENT.md              ← 메인 파이프라인 (도메인 라우팅 + Phase 1~6)
+└── domains/
+    ├── _template.md      ← 도메인 에이전트 양식 (인터페이스)
+    └── {domain}.md       ← 프로젝트에서 실제 내용을 채움
+```
+
+프로젝트에서 `domains/` 하위에 도메인별 컨텍스트(hr.md, salary.md 등)를 채우면, 메인 에이전트가 스택트레이스의 패키지 경로를 보고 해당 도메인 서브에이전트를 자동 호출합니다.
 
 ---
 
