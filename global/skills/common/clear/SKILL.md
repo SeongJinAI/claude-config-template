@@ -22,7 +22,6 @@ description: 컨텍스트 초기화 전 인수인계 문서 업데이트 (멀티
 3. 다음 정보 기록:
    - 완료된 작업
    - 현재 상태 (브랜치, 커밋 상태)
-   - 다음 작업
    - 주의사항
    - 관련 파일
    - 다음 세션 시작 프롬프트
@@ -39,6 +38,16 @@ description: 컨텍스트 초기화 전 인수인계 문서 업데이트 (멀티
 ## 세션 파일 형식
 
 `references/templates/handoff-session-template.md` 양식을 따릅니다.
+
+## 세션 파일 역할 분리
+
+| 정보 | 관리 위치 | handoff에 기록 |
+|------|----------|---------------|
+| 기술 컨텍스트 (브랜치, DDL, 주의사항) | handoff/{session}.md | O |
+| 작업 목록 (할일/완료) | Notion 체크리스트 | X (Notion이 SSOT) |
+| 다음 세션 시작 프롬프트 | handoff/{session}.md | O |
+
+**IMPORTANT**: handoff 파일에 "다음 세션 작업" 테이블을 생성하지 마세요. 작업 목록은 Notion으로 관리합니다.
 
 ## 규칙
 

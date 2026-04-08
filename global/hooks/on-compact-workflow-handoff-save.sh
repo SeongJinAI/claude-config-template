@@ -89,7 +89,7 @@ check_handoff() {
             echo "" >&2
             echo "💡 Compact 전에 해당 세션의 handoff 파일을 업데이트하세요:" >&2
             echo "   - 완료된 작업" >&2
-            echo "   - 다음 작업 (남은 할일)" >&2
+            echo "   - 주의사항 및 기술 컨텍스트 (작업 목록은 Notion 관리)" >&2
             echo "   - 주의사항" >&2
             echo "   - 관련 파일 경로" >&2
             echo "" >&2
@@ -110,7 +110,7 @@ check_handoff() {
             echo "" >&2
             echo "💡 Compact 전에 다음 내용을 $HANDOFF_FILENAME 에 업데이트하세요:" >&2
             echo "   - 완료된 작업" >&2
-            echo "   - 다음 작업 (남은 할일)" >&2
+            echo "   - 주의사항 및 기술 컨텍스트 (작업 목록은 Notion 관리)" >&2
             echo "   - 주의사항" >&2
             echo "   - 관련 파일 경로" >&2
             echo "" >&2

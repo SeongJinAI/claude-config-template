@@ -166,6 +166,7 @@ if [ "$1" = "--link" ]; then
     ENV_FILE="$CLAUDE_DIR/.env"
     echo ""
 
+    SKIP_ENV=false
     if [ -f "$ENV_FILE" ]; then
         echo "기존 ~/.claude/.env 발견:"
         cat "$ENV_FILE"
@@ -173,41 +174,40 @@ if [ "$1" = "--link" ]; then
         read -rp ".env를 다시 설정하시겠습니까? (y/N): " RESET_ENV
         if [ "$RESET_ENV" != "y" ] && [ "$RESET_ENV" != "Y" ]; then
             echo "  .env 유지"
-            echo ""
-            echo "프로젝트 템플릿 적용은 별도로 실행:"
-            echo "  ./scripts/init-project.sh spring-boot|fastapi|nextjs"
-            exit 0
+            SKIP_ENV=true
         fi
     fi
 
-    echo "환경변수를 설정합니다. (빈 입력 시 기본값 사용)"
-    echo ""
+    if [ "$SKIP_ENV" = false ]; then
+        echo "환경변수를 설정합니다. (빈 입력 시 기본값 사용)"
+        echo ""
 
-    DEFAULT_LOG_DIR="$HOME/.claude/logs"
-    read -rp "CLAUDE_LOG_DIR (Hook 로그 저장 경로) [$DEFAULT_LOG_DIR]: " INPUT_LOG_DIR
-    LOG_DIR="${INPUT_LOG_DIR:-$DEFAULT_LOG_DIR}"
+        DEFAULT_LOG_DIR="$HOME/.claude/logs"
+        read -rp "CLAUDE_LOG_DIR (Hook 로그 저장 경로) [$DEFAULT_LOG_DIR]: " INPUT_LOG_DIR
+        LOG_DIR="${INPUT_LOG_DIR:-$DEFAULT_LOG_DIR}"
 
-    read -rp "CLAUDE_TEST_REPO (테스트 레포 절대경로) []: " INPUT_TEST_REPO
-    TEST_REPO="${INPUT_TEST_REPO:-}"
+        read -rp "CLAUDE_TEST_REPO (테스트 레포 절대경로) []: " INPUT_TEST_REPO
+        TEST_REPO="${INPUT_TEST_REPO:-}"
 
-    read -rp "CLAUDE_KNOWLEDGE_REPO (지식 레포 절대경로) []: " INPUT_KNOWLEDGE_REPO
-    KNOWLEDGE_REPO="${INPUT_KNOWLEDGE_REPO:-}"
+        read -rp "CLAUDE_KNOWLEDGE_REPO (지식 레포 절대경로) []: " INPUT_KNOWLEDGE_REPO
+        KNOWLEDGE_REPO="${INPUT_KNOWLEDGE_REPO:-}"
 
-    cat > "$ENV_FILE" <<ENVEOF
+        cat > "$ENV_FILE" <<ENVEOF
 CLAUDE_LOG_DIR=$LOG_DIR
 CLAUDE_TEST_REPO=$TEST_REPO
 CLAUDE_KNOWLEDGE_REPO=$KNOWLEDGE_REPO
 ENVEOF
 
-    echo ""
-    echo "  생성: ~/.claude/.env"
-    cat "$ENV_FILE" | sed 's/^/    /'
+        echo ""
+        echo "  생성: ~/.claude/.env"
+        cat "$ENV_FILE" | sed 's/^/    /'
 
-    mkdir -p "$LOG_DIR"/{hooks,prompts,workflow} 2>/dev/null
+        mkdir -p "$LOG_DIR"/{hooks,prompts,workflow} 2>/dev/null
 
-    if [ -n "$KNOWLEDGE_REPO" ] && [ ! -d "$KNOWLEDGE_REPO" ]; then
-        mkdir -p "$KNOWLEDGE_REPO"/{specs,architecture,manuals,errors,troubleshooting,insights}
-        echo "  생성: 지식 레포 디렉토리 ($KNOWLEDGE_REPO)"
+        if [ -n "$KNOWLEDGE_REPO" ] && [ ! -d "$KNOWLEDGE_REPO" ]; then
+            mkdir -p "$KNOWLEDGE_REPO"/{specs,architecture,manuals,errors,troubleshooting,insights}
+            echo "  생성: 지식 레포 디렉토리 ($KNOWLEDGE_REPO)"
+        fi
     fi
 
     echo ""
@@ -224,6 +224,17 @@ ENVEOF
 
     echo ""
     echo "설치 완료! (타입: $INSTALL_TYPE)"
+    echo ""
+    echo "📋 프로젝트 레벨 설정이 필요한 항목:"
+    echo ""
+    echo "  /notion     → .claude/skills/intg-notion.md (Block ID 매핑, 토큰 경로)"
+    echo "  /clear      → handoff/ 디렉토리 생성 (멀티 세션 사용 시)"
+    if echo "$INSTALL_CATEGORIES" | grep -q "server"; then
+        echo "  /feature-docs-plan     → 프로젝트 문서 디렉토리 구조 설정"
+        echo "  /feature-docs-complete → 프로젝트 문서 디렉토리 구조 설정"
+    fi
+    echo ""
+    echo "  상세: https://github.com/SeongJinAI/claude-config 참조"
 
     exit 0
 fi
@@ -286,7 +297,7 @@ chmod +x "$CLAUDE_DIR/hooks/"*.sh "$CLAUDE_DIR/hooks/lib/"*.sh 2>/dev/null || tr
 
 # 카테고리별 에이전트 다운로드
 echo "agents/ 다운로드 ($INSTALL_TYPE)..."
-declare -A AGENTS_COMMON=([quality-api-code-review]=1)
+declare -A AGENTS_COMMON=([quality-api-code-review]=1 [ops-aiops-connect]=1)
 declare -A AGENTS_SERVER=([ops-hotfix-pipeline]=1)
 declare -A AGENTS_BLOG=([content-blog-post]=1)
 
@@ -403,6 +414,17 @@ fi
 
 echo ""
 echo "설치 완료! (타입: $INSTALL_TYPE)"
+echo ""
+echo "📋 프로젝트 레벨 설정이 필요한 항목:"
+echo ""
+echo "  /notion     → .claude/skills/intg-notion.md (Block ID 매핑, 토큰 경로)"
+echo "  /clear      → handoff/ 디렉토리 생성 (멀티 세션 사용 시)"
+if echo "$INSTALL_CATEGORIES" | grep -q "server"; then
+    echo "  /feature-docs-plan     → 프로젝트 문서 디렉토리 구조 설정"
+    echo "  /feature-docs-complete → 프로젝트 문서 디렉토리 구조 설정"
+fi
+echo ""
+echo "  상세: https://github.com/SeongJinAI/claude-config 참조"
 echo ""
 echo "사용 예시:"
 echo "  ./install.sh --link . --type server   # 서버 프로젝트용"
