@@ -53,6 +53,23 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/on-prompt-test-feedback.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/on-prompt-ops-aiops-report.sh",
+            "async": true,
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/on-tooluse-ops-aiops-report.sh",
+            "async": true
           }
         ]
       }

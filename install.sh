@@ -287,9 +287,12 @@ done
 echo "hooks/ 다운로드..."
 for f in on-commit-quality-check on-commit-docs-sync-check on-push-security-signature-check \
          on-compact-workflow-handoff-save on-prompt-workflow-handoff-remind on-prompt-guide-api-dev \
-         on-prompt-test-feedback on-prompt-ops-log on-prompt-quality-misunderstanding-detect; do
+         on-prompt-test-feedback on-prompt-ops-log on-prompt-quality-misunderstanding-detect \
+         on-tooluse-ops-aiops-report on-prompt-ops-aiops-report on-hook-ops-aiops-report; do
     curl -fsSL "$REPO_URL/global/hooks/${f}.sh" -o "$CLAUDE_DIR/hooks/${f}.sh" 2>/dev/null || true
 done
+# Python hooks
+curl -fsSL "$REPO_URL/global/hooks/aiops-sync-config.py" -o "$CLAUDE_DIR/hooks/aiops-sync-config.py" 2>/dev/null || true
 for f in log-utils write-checkpoint; do
     curl -fsSL "$REPO_URL/global/hooks/lib/${f}.sh" -o "$CLAUDE_DIR/hooks/lib/${f}.sh" 2>/dev/null || true
 done
